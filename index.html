@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stone Saga — Crafting Journal</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>⧗ Stone Saga</h1>
+    <div class="subtitle">Crafting Journal</div>
+  </div>
+  <div class="header-actions">
+    <button class="btn" onclick="triggerImport()">Import JSON</button>
+    <button class="btn" onclick="exportData()">Export JSON</button>
+    <button class="btn" onclick="triggerImportTokens()" title="Load token pip data JSON">Load Token Data</button>
+    <button class="btn btn-primary" onclick="openModal()">+ Add Recipe</button>
+    <input type="file" id="import-file" accept=".json" onchange="importData(event)">
+    <input type="file" id="import-tokens-file" accept=".json" onchange="importTokenData(event)">
+  </div>
+</header>
+
+<main>
+  <div class="stats-bar">
+    <div class="stat"><div class="stat-value" id="stat-total">0</div><div class="stat-label">Recipes</div></div>
+    <div class="stat"><div class="stat-value" id="stat-blue">0</div><div class="stat-label">Blue</div></div>
+    <div class="stat"><div class="stat-value" id="stat-red">0</div><div class="stat-label">Red</div></div>
+    <div class="stat"><div class="stat-value" id="stat-yellow">0</div><div class="stat-label">Yellow</div></div>
+    <div class="stat"><div class="stat-value" id="stat-nothing">0</div><div class="stat-label">Dead ends</div></div>
+    <div class="stat"><div class="stat-value" id="stat-other">0</div><div class="stat-label">Other</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('journal',this)">Journal</button>
+    <button class="tab-btn" onclick="switchTab('explorer',this)">Combination Explorer</button>
+  </div>
+
+  <!-- JOURNAL -->
+  <div class="tab-panel active" id="tab-journal">
+    <div class="controls">
+      <input class="search-box" type="text" placeholder="Search by item name, code…" oninput="renderJournal()" id="search">
+      <select class="filter-select" onchange="renderJournal()" id="filter-color">
+        <option value="">All colours</option>
+        <option value="Blue">Blue</option>
+        <option value="Red">Red</option>
+        <option value="Yellow">Yellow</option>
+        <option value="Purple">Purple</option>
+        <option value="Grey">Grey</option>
+      </select>
+      <button class="btn btn-danger" onclick="clearAllConfirm()" id="clear-btn" style="display:none">Clear All</button>
+    </div>
+    <div class="controls" style="margin-bottom:1.5rem">
+      <div class="mat-filter-wrap" id="mat-filter-wrap">
+        <div id="mat-filter-tags"></div>
+        <input class="mat-filter-input" id="mat-filter-input" placeholder="Filter by material…" autocomplete="off"
+          oninput="onMatFilterInput()" onkeydown="onMatFilterKey(event)">
+        <div class="mat-autocomplete hidden" id="mat-autocomplete"></div>
+      </div>
+      <label class="filter-mode-toggle">
+        <input type="checkbox" id="filter-mode-and" onchange="renderJournal()"> Match ALL materials
+      </label>
+    </div>
+    <div class="recipe-grid" id="recipe-grid"></div>
+  </div>
+
+  <!-- EXPLORER -->
+  <div class="tab-panel" id="tab-explorer">
+    <div id="token-data-notice"></div>
+    <div class="explorer-top">
+      <div class="explorer-mat-col">
+        <label>Material A</label>
+        <div class="ac-wrap">
+          <input class="form-control" id="ex-mat1" placeholder="e.g. Wood (hardened)" autocomplete="off"
+            oninput="exAcShow('ex-mat1','ex-ac1')" onkeydown="exAcKey(event,'ex-mat1','ex-ac1')"
+            onfocus="exAcShow('ex-mat1','ex-ac1')">
+          <div class="mat-autocomplete hidden" id="ex-ac1"></div>
+        </div>
+      </div>
+      <div class="explorer-mat-col">
+        <label>Material B <span style="font-size:.7rem;color:var(--flint)">(blank = all)</span></label>
+        <div class="ac-wrap">
+          <input class="form-control" id="ex-mat2" placeholder="e.g. Feather (cut)" autocomplete="off"
+            oninput="exAcShow('ex-mat2','ex-ac2')" onkeydown="exAcKey(event,'ex-mat2','ex-ac2')"
+            onfocus="exAcShow('ex-mat2','ex-ac2')">
+          <div class="mat-autocomplete hidden" id="ex-ac2"></div>
+        </div>
+      </div>
+      <div>
+        <button class="btn btn-primary" onclick="renderExplorer()">Show Combinations</button>
+        <button class="btn" onclick="clearExplorer()" style="margin-left:.4rem">Clear</button>
+      </div>
+    </div>
+    <div id="explorer-output"></div>
+  </div>
+</main>
+
+<!-- RECIPE MODAL -->
+<div class="modal-overlay hidden" id="modal-overlay" onclick="outsideClose(event,'modal-overlay')">
+  <div class="modal">
+    <h2 id="modal-title">Record Recipe</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Item Name *</label>
+        <input class="form-control" id="f-name" placeholder="e.g. Riverstone Adze">
+      </div>
+      <div class="form-group" style="max-width:110px">
+        <label>Item # (Card)</label>
+        <input class="form-control" id="f-item-num" placeholder="e.g. IT13">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Crafting Codes — all codes shown on this item card back</label>
+      <div class="code-list" id="f-code-list"></div>
+      <div class="add-code-row">
+        <input class="form-control" id="new-code-input" autocomplete="off"
+          placeholder="e.g. B2132, R4210"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();addCodes();}">
+        <button class="btn" onclick="addCodes()" style="white-space:nowrap">+ Add</button>
+      </div>
+      <div class="hint">B=Blue, R=Red, Y=Yellow, P=Purple, G=Grey followed by 4 digits. Separate multiple codes with commas or spaces.</div>
+    </div>
+    <div class="form-group">
+      <label>Material 1 *</label>
+      <div class="form-row">
+        <div class="form-group ac-wrap">
+          <input class="form-control" id="f-mat1-name" placeholder="e.g. Riverstone (flaked)" autocomplete="off"
+            oninput="fmAcShow('f-mat1-name','f-mat1-cat','fac1')"
+            onkeydown="fmAcKey(event,'f-mat1-name','f-mat1-cat','fac1')"
+            onfocus="fmAcShow('f-mat1-name','f-mat1-cat','fac1')">
+          <div class="mat-autocomplete hidden" id="fac1"></div>
+        </div>
+        <div class="form-group" style="max-width:130px">
+          <select class="form-control" id="f-mat1-cat">
+            <option value="unknown">Category…</option>
+            <option value="animal">Animal</option><option value="plant">Plant</option>
+            <option value="mineral">Mineral</option><option value="rare">Rare</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Material 2 *</label>
+      <div class="form-row">
+        <div class="form-group ac-wrap">
+          <input class="form-control" id="f-mat2-name" placeholder="e.g. Feather" autocomplete="off"
+            oninput="fmAcShow('f-mat2-name','f-mat2-cat','fac2')"
+            onkeydown="fmAcKey(event,'f-mat2-name','f-mat2-cat','fac2')"
+            onfocus="fmAcShow('f-mat2-name','f-mat2-cat','fac2')">
+          <div class="mat-autocomplete hidden" id="fac2"></div>
+        </div>
+        <div class="form-group" style="max-width:130px">
+          <select class="form-control" id="f-mat2-cat">
+            <option value="unknown">Category…</option>
+            <option value="animal">Animal</option><option value="plant">Plant</option>
+            <option value="mineral">Mineral</option><option value="rare">Rare</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea class="form-control" id="f-notes" rows="2" placeholder="Orientation hints, technologies granted…"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRecipe()">Save Recipe</button>
+    </div>
+  </div>
+</div>
+
+<!-- STATUS MODAL -->
+<div class="modal-overlay hidden" id="status-overlay" onclick="outsideClose(event,'status-overlay')">
+  <div class="modal" style="max-width:460px">
+    <h2 id="sm-title">Mark Tried — Nothing</h2>
+    <div id="sm-body" style="margin-bottom:1rem;color:var(--flint);font-size:.9rem"></div>
+    <div id="sm-code-entry">
+      <div class="form-group">
+        <label>Code tried</label>
+        <input class="form-control" id="sm-code-input" autocomplete="off"
+          placeholder="e.g. B2132"
+          style="max-width:180px"
+          onkeydown="if(event.key==='Enter') setCodeStatus('nothing')">
+        <div class="hint">B=Blue, R=Red, Y=Yellow, P=Purple, G=Grey followed by 4 digits.</div>
+      </div>
+      <div id="sm-existing" style="margin-top:.6rem"></div>
+    </div>
+    <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:1rem">
+      <button class="btn btn-primary" onclick="setCodeStatus('nothing')">Save</button>
+      <button class="btn" onclick="closeStatusModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal-overlay hidden" id="import-overlay" onclick="outsideClose(event,'import-overlay')">
+  <div class="modal" style="max-width:480px">
+    <h2>Load JSON</h2>
+    <div id="im-summary" style="margin-bottom:1.2rem;font-size:.9rem;line-height:1.7;color:var(--chalk)"></div>
+    <div id="im-current" style="margin-bottom:1.4rem;font-size:.82rem;color:var(--flint)"></div>
+    <div style="display:flex;gap:.7rem;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="doImport('merge')">Merge</button>
+      <button class="btn btn-danger" onclick="doImport('overwrite')">Overwrite</button>
+      <button class="btn" onclick="closeImportModal()">Cancel</button>
+    </div>
+    <div style="margin-top:.9rem;font-size:.78rem;color:var(--flint)">
+      <strong style="color:var(--chalk)">Merge</strong> — incoming recipes are added; existing ones with the same ID are updated. Dead-end codes are combined.<br>
+      <strong style="color:var(--chalk)">Overwrite</strong> — replaces all current recipes and dead-end codes with the file contents.
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
