@@ -10,7 +10,7 @@
 
 <header>
   <div>
-    <h1>⧗ Stone Saga</h1>
+    <img src="assets/images/Stonesaga.webp" alt="Stone Saga" class="header-logo">
     <div class="subtitle">Crafting Journal</div>
   </div>
   <div class="header-actions">
@@ -26,30 +26,18 @@
 <main>
   <div class="stats-bar">
     <div class="stat"><div class="stat-value" id="stat-total">0</div><div class="stat-label">Recipes</div></div>
-    <div class="stat"><div class="stat-value" id="stat-blue">0</div><div class="stat-label">Blue</div></div>
-    <div class="stat"><div class="stat-value" id="stat-red">0</div><div class="stat-label">Red</div></div>
-    <div class="stat"><div class="stat-value" id="stat-yellow">0</div><div class="stat-label">Yellow</div></div>
     <div class="stat"><div class="stat-value" id="stat-nothing">0</div><div class="stat-label">Dead ends</div></div>
-    <div class="stat"><div class="stat-value" id="stat-other">0</div><div class="stat-label">Other</div></div>
   </div>
 
   <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('journal',this)">Journal</button>
-    <button class="tab-btn" onclick="switchTab('explorer',this)">Combination Explorer</button>
+    <button class="tab-btn active" onclick="switchTab('explorer',this)">Crafting</button>
+    <button class="tab-btn" onclick="switchTab('journal',this)">Recipes</button>
   </div>
 
   <!-- JOURNAL -->
-  <div class="tab-panel active" id="tab-journal">
+  <div class="tab-panel" id="tab-journal">
     <div class="controls">
       <input class="search-box" type="text" placeholder="Search by item name, code…" oninput="renderJournal()" id="search">
-      <select class="filter-select" onchange="renderJournal()" id="filter-color">
-        <option value="">All colours</option>
-        <option value="Blue">Blue</option>
-        <option value="Red">Red</option>
-        <option value="Yellow">Yellow</option>
-        <option value="Purple">Purple</option>
-        <option value="Grey">Grey</option>
-      </select>
       <button class="btn btn-danger" onclick="clearAllConfirm()" id="clear-btn" style="display:none">Clear All</button>
     </div>
     <div class="controls" style="margin-bottom:1.5rem">
@@ -67,8 +55,9 @@
   </div>
 
   <!-- EXPLORER -->
-  <div class="tab-panel" id="tab-explorer">
+  <div class="tab-panel active" id="tab-explorer">
     <div id="token-data-notice"></div>
+    <div class="explorer-controls">
     <div class="explorer-top">
       <div class="explorer-mat-col">
         <label>Material A</label>
@@ -93,6 +82,13 @@
         <button class="btn" onclick="clearExplorer()" style="margin-left:.4rem">Clear</button>
       </div>
     </div>
+    <div class="explorer-filter-bar">
+      <span class="explorer-filter-label">Show:</span>
+      <button class="explorer-filter-btn active" data-filter="all"     onclick="setExplorerFilter('all',this)">All</button>
+      <button class="explorer-filter-btn"         data-filter="unknown" onclick="setExplorerFilter('unknown',this)">Unknown</button>
+      <button class="explorer-filter-btn"         data-filter="known"   onclick="setExplorerFilter('known',this)">Known</button>
+    </div>
+    </div>
     <div id="explorer-output"></div>
   </div>
 </main>
@@ -107,7 +103,7 @@
         <input class="form-control" id="f-name" placeholder="e.g. Riverstone Adze">
       </div>
       <div class="form-group" style="max-width:110px">
-        <label>Item # (Card)</label>
+        <label>Item # (Card) *</label>
         <input class="form-control" id="f-item-num" placeholder="e.g. IT13">
       </div>
     </div>
@@ -199,7 +195,8 @@
   <div class="modal" style="max-width:480px">
     <h2>Load JSON</h2>
     <div id="im-summary" style="margin-bottom:1.2rem;font-size:.9rem;line-height:1.7;color:var(--chalk)"></div>
-    <div id="im-current" style="margin-bottom:1.4rem;font-size:.82rem;color:var(--flint)"></div>
+    <div id="im-current" style="margin-bottom:1rem;font-size:.82rem;color:var(--flint)"></div>
+    <div id="im-conflicts" style="margin-bottom:1.2rem"></div>
     <div style="display:flex;gap:.7rem;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="doImport('merge')">Merge</button>
       <button class="btn btn-danger" onclick="doImport('overwrite')">Overwrite</button>

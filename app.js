@@ -5,46 +5,52 @@ const STORAGE_KEY = 'stonesaga_v2';
 const PIP_COLORS  = ['Blue','Red','Yellow','Purple','Grey'];
 const PIP_CSS     = {Blue:'blue',Red:'red',Yellow:'yellow',Purple:'purple',Grey:'grey'};
 
+const IMG = 'assets/images/materials/';
+// marks: [left, right, top, bottom] — each entry is "Color N" or null for no pip.
+// From these 4 edges the app derives all 4 token rotations automatically.
 const KNOWN_MATERIALS = [
-  {name:'Bone',cat:'animal',processed:'Bone (carved)'},
-  {name:'Bone (carved)',cat:'animal',processed:null},
-  {name:'Hide',cat:'animal',processed:'Hide (cured)'},
-  {name:'Hide (cured)',cat:'animal',processed:null},
-  {name:'Shell',cat:'animal',processed:'Shell (sharpened)'},
-  {name:'Shell (sharpened)',cat:'animal',processed:null},
-  {name:'Guts',cat:'animal',processed:'Guts (cured)'},
-  {name:'Guts (cured)',cat:'animal',processed:null},
-  {name:'Feather',cat:'animal',processed:'Feather (cut)'},
-  {name:'Feather (cut)',cat:'animal',processed:null},
-  {name:'Tooth',cat:'animal',processed:'Tooth (drilled)'},
-  {name:'Tooth (drilled)',cat:'animal',processed:null},
-  {name:'Clay',cat:'mineral',processed:'Clay (fired)'},
-  {name:'Clay (fired)',cat:'mineral',processed:null},
-  {name:'Cloudstone',cat:'mineral',processed:'Cloudstone (shaped)'},
-  {name:'Cloudstone (shaped)',cat:'mineral',processed:null},
-  {name:'Riverstone',cat:'mineral',processed:'Riverstone (flaked)'},
-  {name:'Riverstone (flaked)',cat:'mineral',processed:null},
-  {name:'Sunstone',cat:'mineral',processed:'Sunstone (shaped)'},
-  {name:'Sunstone (shaped)',cat:'mineral',processed:null},
-  {name:'Wood',cat:'plant',processed:'Wood (hardened)'},
-  {name:'Wood (hardened)',cat:'plant',processed:null},
-  {name:'Fiber',cat:'plant',processed:'Fiber (woven)'},
-  {name:'Fiber (woven)',cat:'plant',processed:null},
-  {name:'Pitch',cat:'plant',processed:'Pitch (treated)'},
-  {name:'Pitch (treated)',cat:'plant',processed:null},
-  {name:'Moonblood',cat:'rare',processed:'Moonblood (solid)'},
-  {name:'Moonblood (solid)',cat:'rare',processed:null},
-  {name:'Coral (dead)',cat:'rare',processed:'Coral (living)'},
-  {name:'Coral (living)',cat:'rare',processed:null},
-  {name:'Silk',cat:'rare',processed:'Silk (woven)'},
-  {name:'Silk (woven)',cat:'rare',processed:null},
+  {name:'Bone',               cat:'animal',  processed:'Bone (carved)',        image:IMG+'bone.webp',              marks:['Blue 2',  'Yellow 2', 'Yellow 3', 'Red 2'  ]},
+  {name:'Bone (carved)',      cat:'animal',  processed:null,                   image:IMG+'bone-carved.webp',       marks:['Red 1',   'Yellow 3', 'Red 4',    'Yellow 4']},
+  {name:'Hide',               cat:'animal',  processed:'Hide (cured)',         image:IMG+'hide.webp',              marks:null},
+  {name:'Hide (cured)',       cat:'animal',  processed:null,                   image:IMG+'hide-cured.webp',        marks:['Blue 3',  'Red 5',    null,       null      ]},
+  {name:'Shell',              cat:'animal',  processed:'Shell (sharpened)',    image:IMG+'shell.webp',             marks:null},
+  {name:'Shell (sharpened)',  cat:'animal',  processed:null,                   image:IMG+'shell-sharpened.webp',   marks:['Blue 6',  'Red 3',    'Yellow 5', 'Red 1'   ]},
+  {name:'Guts',               cat:'animal',  processed:'Guts (cured)',         image:IMG+'guts.webp',              marks:null},
+  {name:'Guts (cured)',       cat:'animal',  processed:null,                   image:IMG+'guts-cured.webp',        marks:['Yellow 1','Blue 1',   null,       'Red 3'   ]},
+  {name:'Feather',            cat:'animal',  processed:'Feather (cut)',        image:IMG+'feather.webp',           marks:[null,      'Blue 1',   null,       null      ]},
+  {name:'Feather (cut)',      cat:'animal',  processed:null,                   image:IMG+'feather-cut.webp',       marks:['Yellow 1',null,       null,       null      ]},
+  {name:'Tooth',              cat:'animal',  processed:'Tooth (drilled)',      image:IMG+'tooth.webp',             marks:null},
+  {name:'Tooth (drilled)',    cat:'animal',  processed:null,                   image:IMG+'tooth-drilled.webp',     marks:['Blue 2',  null,       'Yellow 2', null      ]},
+  {name:'Clay',               cat:'mineral', processed:'Clay (fired)',         image:IMG+'clay.webp',              marks:null},
+  {name:'Clay (fired)',       cat:'mineral', processed:null,                   image:IMG+'clay-fired.webp',        marks:['Red 6',   'Red 6',    null,       null      ]},
+  {name:'Cloudstone',         cat:'mineral', processed:'Cloudstone (shaped)',  image:IMG+'cloudstone.webp',        marks:null},
+  {name:'Cloudstone (shaped)',cat:'mineral', processed:null,                   image:IMG+'cloudstone-shaped.webp', marks:['Blue 5',  'Yellow 4', 'Red 4',    'Blue 2'  ]},
+  {name:'Riverstone',         cat:'mineral', processed:'Riverstone (flaked)',  image:IMG+'riverstone.webp',        marks:null},
+  {name:'Riverstone (flaked)',cat:'mineral', processed:null,                   image:IMG+'riverstone-flaked.webp', marks:['Red 1',   'Yellow 4', 'Yellow 4', 'Red 3'   ]},
+  {name:'Sunstone',           cat:'mineral', processed:'Sunstone (shaped)',    image:IMG+'sunstone.webp',          marks:null},
+  {name:'Sunstone (shaped)',  cat:'mineral', processed:null,                   image:IMG+'sunstone-shaped.webp',   marks:['Red 5',   'Yellow 6', null,       null      ]},
+  {name:'Wood',               cat:'plant',   processed:'Wood (hardened)',      image:IMG+'wood.webp',              marks:['Blue 2',  'Yellow 2', 'Red 2',    'Yellow 3']},
+  {name:'Wood (hardened)',    cat:'plant',   processed:null,                   image:IMG+'wood-hardened.webp',     marks:['Red 1',   'Yellow 2', 'Red 3',    'Yellow 3']},
+  {name:'Fiber',              cat:'plant',   processed:'Fiber (woven)',        image:IMG+'fiber.webp',             marks:null},
+  {name:'Fiber (woven)',      cat:'plant',   processed:null,                   image:IMG+'fiber-woven.webp',       marks:['Yellow 1','Blue 1',   'Yellow 5', 'Red 5'   ]},
+  {name:'Pitch',              cat:'plant',   processed:'Pitch (treated)',      image:IMG+'pitch.webp',             marks:null},
+  {name:'Pitch (treated)',    cat:'plant',   processed:null,                   image:IMG+'pitch-treated.webp',     marks:['Red 5',   null,       null,       null      ]},
+  {name:'Moonblood',          cat:'rare',    processed:'Moonblood (solid)',    image:IMG+'moonblood.webp',         marks:null},
+  {name:'Moonblood (solid)',  cat:'rare',    processed:null,                   image:IMG+'moonblood-solid.webp',   marks:['Red 1',   'Yellow 6', 'Red 2',    'Grey 6'  ]},
+  {name:'Coral',              cat:'rare',    processed:'Coral (living)',       image:IMG+'coral.webp',             marks:null},
+  {name:'Coral (living)',     cat:'rare',    processed:null,                   image:IMG+'coral-living.webp',      marks:['Purple 6','Red 4',    'Purple 6', 'Yellow 4']},
+  {name:'Silk',               cat:'rare',    processed:'Silk (woven)',         image:IMG+'silk.webp',              marks:['Blue 1',  'Yellow 1', 'Red 3',    null      ]},
+  {name:'Silk (woven)',       cat:'rare',    processed:null,                   image:IMG+'silk-woven.webp',        marks:['Blue 2',  'Red 5',    null,       null      ]},
 ];
 const KM = Object.fromEntries(KNOWN_MATERIALS.map(m=>[m.name.toLowerCase(),m]));
+
+// A material can participate in crafting only if it has at least one non-null edge mark.
+function canCraft(name){ const m=KM[norm(name)]; return !!(m&&m.marks); }
 
 // ═══════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════
-let recipes   = [];   // [{id,name,itemNum,codes:[{color,digits}],mat1Name,mat1Cat,mat2Name,mat2Cat,notes,addedAt}]
+let recipes   = [];   // [{id,name,codes:[{color,digits}],mat1Name,mat1Cat,mat2Name,mat2Cat,notes,addedAt}]
 let nullCodes = {};   // {"Blue 1234": {mat1,mat2}}
 let tokenData = {};   // {"wood (hardened)": [[leftColor,leftCount,rightColor,rightCount], ...]}
 let lastUpdated = null;
@@ -85,9 +91,9 @@ function renderTokenNotice() {
   if (!count) {
     n.className='token-data-notice warn';
     n.textContent='No token pip data loaded. Load a token data JSON to enable automatic combination generation. Without it, only manually recorded codes will appear.';
-  } else {
-    n.className='token-data-notice';
-    n.textContent=`Token pip data loaded for ${count} material(s): ${Object.keys(tokenData).map(titleCase).join(', ')}`;
+  // } else {
+  //   n.className='token-data-notice';
+  //   n.textContent=`Token pip data loaded for ${count} material(s): ${Object.keys(tokenData).map(titleCase).join(', ')}`;
   }
 }
 
@@ -96,7 +102,7 @@ function renderTokenNotice() {
 // ═══════════════════════════════════════════════════
 
 // Given two material names (A left, B right), compute all valid crafting codes.
-// Returns [{color, digits, colCounts}] where digits is the 4-char string.
+// Returns [{color, digits, colCounts, rotA, rotB}] — rotA/rotB are CSS rotation degrees.
 // colCounts = [Aleft, Aright, Bleft, Bright] for display.
 function computeCodes(matA, matB) {
   const orientA = tokenData[matA.toLowerCase()];
@@ -104,8 +110,8 @@ function computeCodes(matA, matB) {
   if (!orientA || !orientB) return null; // no pip data
 
   const results = [];
-  for (const [alc, alnCount, arc, arcCount] of orientA) {
-    for (const [blc, blCount, brc, brcCount] of orientB) {
+  for (const [alc, alnCount, arc, arcCount, rotA=0] of orientA) {
+    for (const [blc, blCount, brc, brcCount, rotB=0] of orientB) {
       // inner edges match: A-right pip type === B-left pip type
       // null inner edge not allowed (null icons can only be in last column = B-right)
       if (arc === null || blc === null) continue; // null on inner edge: invalid
@@ -121,7 +127,7 @@ function computeCodes(matA, matB) {
       const col3 = blCount;
       const col4 = brcCount ?? 0; // null icon = 0
       const digits = `${col1}${col2}${col3}${col4}`;
-      results.push({color, digits, colCounts:[col1,col2,col3,col4]});
+      results.push({color, digits, colCounts:[col1,col2,col3,col4], rotA, rotB});
     }
   }
   return results;
@@ -140,10 +146,16 @@ function pipHtml(color){
 }
 
 function allMatNames(){
-  const s=new Set(KNOWN_MATERIALS.map(m=>m.name));
-  recipes.forEach(r=>{if(r.mat1Name)s.add(r.mat1Name.trim());if(r.mat2Name)s.add(r.mat2Name.trim());});
-  Object.keys(tokenData).forEach(k=>s.add(titleCase(k)));
-  return [...s].sort((a,b)=>a.localeCompare(b));
+  // Build a map keyed by lowercase to avoid duplicates between KNOWN_MATERIALS (title case)
+  // and tokenData keys (lowercase) or recipe entries with inconsistent casing.
+  const map=new Map();
+  KNOWN_MATERIALS.forEach(m=>map.set(m.name.toLowerCase(),m.name));
+  recipes.forEach(r=>{
+    if(r.mat1Name){const n=r.mat1Name.trim();if(!map.has(n.toLowerCase()))map.set(n.toLowerCase(),n);}
+    if(r.mat2Name){const n=r.mat2Name.trim();if(!map.has(n.toLowerCase()))map.set(n.toLowerCase(),n);}
+  });
+  Object.keys(tokenData).forEach(k=>{if(!map.has(k))map.set(k,titleCase(k));});
+  return [...map.values()].sort((a,b)=>a.localeCompare(b));
 }
 
 function catFor(name){
@@ -176,13 +188,8 @@ function switchTab(id,btn){
 // STATS
 // ═══════════════════════════════════════════════════
 function updateStats(){
-  const allCodes=recipes.flatMap(r=>r.codes||[]);
   document.getElementById('stat-total').textContent=recipes.length;
-  document.getElementById('stat-blue').textContent=allCodes.filter(c=>c.color==='Blue').length;
-  document.getElementById('stat-red').textContent=allCodes.filter(c=>c.color==='Red').length;
-  document.getElementById('stat-yellow').textContent=allCodes.filter(c=>c.color==='Yellow').length;
   document.getElementById('stat-nothing').textContent=Object.keys(nullCodes).length;
-  document.getElementById('stat-other').textContent=allCodes.filter(c=>!['Blue','Red','Yellow'].includes(c.color)).length;
 }
 
 // ═══════════════════════════════════════════════════
@@ -194,25 +201,22 @@ function renderJournal(){
   updateStats();
   document.getElementById('clear-btn').style.display=recipes.length?'block':'none';
   const q=document.getElementById('search').value.toLowerCase();
-  const cf=document.getElementById('filter-color').value;
   const andM=document.getElementById('filter-mode-and').checked;
   const list=recipes.filter(r=>{
-    if(cf&&!(r.codes||[]).some(c=>c.color===cf)) return false;
     if(matFilterTags.length){
       const mats=[norm(r.mat1Name||''),norm(r.mat2Name||'')];
-      if(andM){if(!matFilterTags.every(t=>mats.includes(norm(t)))) return false;}
-      else{if(!matFilterTags.some(t=>mats.includes(norm(t)))) return false;}
+      // Expand each filter tag to include its processed variant:
+      // filtering by "Wood" also matches recipes using "Wood (hardened)"
+      const tagMatches=t=>withVariant(t).map(norm).some(v=>mats.includes(v));
+      if(andM){if(!matFilterTags.every(tagMatches)) return false;}
+      else{if(!matFilterTags.some(tagMatches)) return false;}
     }
     if(q){
       const codes=(r.codes||[]).map(c=>`${c.color} ${c.digits}`).join(' ');
-      if(![r.name,r.itemNum,codes,r.mat1Name,r.mat2Name,r.notes].join(' ').toLowerCase().includes(q)) return false;
+      if(![r.name,r.id,codes,r.mat1Name,r.mat2Name,r.notes].join(' ').toLowerCase().includes(q)) return false;
     }
     return true;
-  }).sort((a,b)=>{
-    const ac=(a.codes||[])[0],bc=(b.codes||[])[0];
-    if(!ac&&!bc) return 0; if(!ac) return 1; if(!bc) return -1;
-    return ac.color.localeCompare(bc.color)||(ac.digits||'').localeCompare(bc.digits||'');
-  });
+  }).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
 
   const grid=document.getElementById('recipe-grid');
   if(!list.length){
@@ -224,7 +228,7 @@ function renderJournal(){
     return `<div class="recipe-card">
       <div class="recipe-card-header">
         <div class="recipe-name">${esc(r.name)}</div>
-        ${r.itemNum?`<div class="item-number">${esc(r.itemNum)}</div>`:''}
+        ${r.id?`<div class="item-number">${esc(r.id)}</div>`:''}
       </div>
       <div class="code-chips">${chips||'<span style="color:var(--flint);font-size:.8rem">No codes recorded</span>'}</div>
       <div class="recipe-materials">
@@ -272,6 +276,13 @@ function onMatFilterKey(e){
 // ═══════════════════════════════════════════════════
 // EXPLORER
 // ═══════════════════════════════════════════════════
+let explorerFilter='all'; // 'all' | 'known' | 'unknown'
+function setExplorerFilter(val,btn){
+  explorerFilter=val;
+  document.querySelectorAll('.explorer-filter-btn').forEach(b=>b.classList.toggle('active',b===btn));
+  renderExplorer();
+}
+
 function clearExplorer(){
   document.getElementById('ex-mat1').value='';
   document.getElementById('ex-mat2').value='';
@@ -281,18 +292,30 @@ function clearExplorer(){
 let exAcIdxMap={};
 function exAcShow(inputId,acId){
   const q=document.getElementById(inputId).value;
-  showAcDropdown(acId,q,[],n=>`pickExMat('${esc(n)}','${inputId}','${acId}')`);
+  showAcDropdown(acId,q,[],n=>`pickExMat('${esc(n)}','${inputId}','${acId}')`,canCraft);
   exAcIdxMap[acId]=-1;
 }
 function exAcKey(e,inputId,acId){
   acKeyNav(e,acId,idx=>{
     const items=document.querySelectorAll(`#${acId} .mat-autocomplete-item`);
-    if(idx>=0&&items[idx]) pickExMat(items[idx].dataset.name,inputId,acId);
-    else hideAc(acId);
+    if(idx>=0&&items[idx]){
+      pickExMat(items[idx].dataset.name,inputId,acId);
+    } else {
+      // Enter with no dropdown selection — use typed value as-is and run search
+      hideAc(acId);
+      if(e.key==='Enter') renderExplorer();
+    }
   },exAcIdxMap,acId);
 }
 function pickExMat(name,inputId,acId){
-  document.getElementById(inputId).value=name; hideAc(acId);
+  document.getElementById(inputId).value=name;
+  hideAc(acId);
+  // Move focus to Material B if we just filled Material A, otherwise run search
+  if(inputId==='ex-mat1'){
+    document.getElementById('ex-mat2').focus();
+  } else {
+    renderExplorer();
+  }
 }
 
 function renderExplorer(){
@@ -301,11 +324,16 @@ function renderExplorer(){
   const out=document.getElementById('explorer-output');
   if(!mat1){out.innerHTML='<p style="color:var(--flint);font-style:italic">Enter at least Material A.</p>';return;}
 
-  // Expand each input to include unprocessed/processed variant
-  const aSet=[...new Set(withVariant(mat1))];
+  // Expand each input to include unprocessed/processed variant,
+  // then filter to only materials that actually have pip marks.
+  const aSet=[...new Set(withVariant(mat1).filter(canCraft))];
+  if(!aSet.length){
+    out.innerHTML='<p style="color:var(--flint);font-style:italic">That material has no pip marks and cannot be used in crafting combinations.</p>';
+    return;
+  }
   const bSet=mat2
-    ? [...new Set(withVariant(mat2))]
-    : allMatNames().filter(n=>!aSet.map(norm).includes(norm(n)));
+    ? [...new Set(withVariant(mat2).filter(canCraft))]
+    : allMatNames().filter(n=>!aSet.map(norm).includes(norm(n))&&canCraft(n));
 
   // Build ordered pairs: (A,B) and (B,A) if A≠B
   const seen=new Set();
@@ -328,6 +356,10 @@ function renderExplorer(){
   let html='';
   for(const [a,b] of pairs){
     const computedCodes=computeCodes(a,b); // null if no token data for either
+    // Apply filter before building HTML
+    const hasKnown=recipes.some(r=>{const m1=norm(r.mat1Name||''),m2=norm(r.mat2Name||'');return(m1===norm(a)&&m2===norm(b))||(m1===norm(b)&&m2===norm(a));});
+    if(explorerFilter==='known'&&!hasKnown) continue;
+    if(explorerFilter==='unknown'&&hasKnown) continue;
     const hasTokenData=computedCodes!==null;
 
     // Recipes that match this ordered pair
@@ -354,32 +386,42 @@ function renderExplorer(){
       ? computedCodes.filter(c=>{const k=codeKey(c.color,c.digits);return!discoveredKeys.has(k)&&!nullKeySet.has(k);})
       : [];
 
+    // Skip section entirely when all computed codes are accounted for and nothing to show
+    const showNothing=explorerFilter!=='known';
+    const hasContent=matchingRecipes.length||(showNothing&&(nullForPair.length||unknownComputed.length||!hasTokenData));
+    if(!hasContent) continue;
+
     const catA=catFor(a),catB=catFor(b);
-    html+=`<div class="combo-section">
+    let sec=`<div class="combo-section">
       <div class="combo-section-header">
-        <span style="color:var(--flint);font-size:.75rem;text-transform:uppercase;letter-spacing:.1em">A left · B right</span>
-        <span class="material-tag ${catA}">${esc(a)}</span>
-        <span style="color:var(--flint)">×</span>
-        <span class="material-tag ${catB}">${esc(b)}</span>
-        ${hasTokenData?'':`<span style="font-size:.72rem;color:var(--flint);font-style:italic">— pip data not loaded for one or both materials</span>`}
+        <div class="combo-header-mat"><span class="material-tag ${catA}">${esc(a)}</span></div>
+        <span class="combo-header-sep">×</span>
+        <div class="combo-header-mat"><span class="material-tag ${catB}">${esc(b)}</span></div>
       </div>
       <div class="combo-grid">`;
 
     // Discovered
     for(const r of matchingRecipes){
       const chips=(r.codes||[]).map(c=>`<span class="recipe-code" style="font-size:.75rem">${pipHtml(c.color)} ${esc(c.color)} ${esc(c.digits)}</span>`).join(' ');
-      html+=`<div class="combo-card state-discovered">
+      const firstCode=r.codes&&r.codes[0];
+      let rotA=0,rotB=0;
+      if(firstCode&&computedCodes){
+        const match=computedCodes.find(c=>c.color===firstCode.color&&c.digits===firstCode.digits);
+        if(match){rotA=match.rotA;rotB=match.rotB;}
+      }
+      sec+=`<div class="combo-card state-discovered">
+        ${tokenPairHtml(a,rotA,b,rotB)}
         <div class="combo-header"><div>${chips}</div><span class="status-badge discovered">Discovered</span></div>
         <div class="combo-item-name">${esc(r.name)}</div>
-        ${r.itemNum?`<div class="combo-item-num">${esc(r.itemNum)}</div>`:''}
+        ${r.id?`<div class="combo-item-num">${esc(r.id)}</div>`:''}
         <div class="combo-actions"><button class="btn btn-sm" onclick="editRecipe('${r.id}')">Edit</button></div>
       </div>`;
     }
 
     // Null (tried, nothing)
-    for(const k of nullForPair){
-      const [color,...dp]=k.split(' ');
-      html+=`<div class="combo-card state-nothing">
+    if(showNothing) for(const k of nullForPair){
+      const [color]=k.split(' ');
+      sec+=`<div class="combo-card state-nothing">
         <div class="combo-header">
           <div class="combo-code-display">${pipHtml(color)} ${esc(k)}</div>
           <span class="status-badge nothing">Nothing</span>
@@ -391,16 +433,13 @@ function renderExplorer(){
       </div>`;
     }
 
-    // Unknown computed codes (from token pip data)
-    for(const c of unknownComputed){
+    // Unknown computed codes
+    if(showNothing) for(const c of unknownComputed){
       const k=codeKey(c.color,c.digits);
-      const detail=`${c.colCounts[0]} · ${c.colCounts[1]} · ${c.colCounts[2]} · ${c.colCounts[3]}`;
-      html+=`<div class="combo-card">
+      sec+=`<div class="combo-card">
+        ${tokenPairHtml(a,c.rotA,b,c.rotB)}
         <div class="combo-header">
-          <div>
-            <div class="combo-code-display">${pipHtml(c.color)} ${esc(c.color)} ${esc(c.digits)}</div>
-            <div class="combo-code-detail">cols: ${esc(detail)}</div>
-          </div>
+          <div class="combo-code-display">${pipHtml(c.color)} ${esc(c.color)} ${esc(c.digits)}</div>
           <span class="status-badge unknown">Unknown</span>
         </div>
         <div class="combo-actions">
@@ -410,13 +449,11 @@ function renderExplorer(){
       </div>`;
     }
 
-    // If no pip data: generic unknown card
-    if(!hasTokenData||(!unknownComputed.length&&!nullForPair.length&&!matchingRecipes.length)){
-      html+=`<div class="combo-card">
+    // No pip data: generic unknown card
+    if(showNothing&&!hasTokenData){
+      sec+=`<div class="combo-card">
         <div class="combo-header"><span class="status-badge unknown">Unknown</span></div>
-        <div style="font-size:.8rem;color:var(--flint);font-style:italic;margin-bottom:.4rem">
-          ${hasTokenData?'All computed codes accounted for — try other orientations?':'No pip data — enter codes manually'}
-        </div>
+        <div style="font-size:.8rem;color:var(--flint);font-style:italic;margin-bottom:.4rem">No pip data — enter codes manually</div>
         <div class="combo-actions">
           <button class="btn btn-sm btn-primary" onclick="openModalForPair('${esc(a)}','${esc(b)}')">Record discovery</button>
           <button class="btn btn-sm" onclick="openStatusModal(null,'${esc(a)}','${esc(b)}')">Mark tried — nothing</button>
@@ -424,7 +461,8 @@ function renderExplorer(){
       </div>`;
     }
 
-    html+=`</div></div>`; // close combo-grid, combo-section
+    sec+=`</div></div>`;
+    html+=sec;
   }
   out.innerHTML=html;
 }
@@ -540,12 +578,15 @@ function addCodes(){
   if(!raw) return;
   const {codes,errors}=parseCodeString(raw);
   if(errors.length){alert(`Could not parse: ${errors.join(', ')}\n\nUse format like B2132 or R4210.`);return;}
-  let added=0;
+  const conflicts=[];
   codes.forEach(c=>{
-    if(!pendingCodes.some(x=>x.color===c.color&&x.digits===c.digits)){
-      pendingCodes.push(c); added++;
-    }
+    const key=codeKey(c.color,c.digits);
+    // Check against all other recipes (exclude the one currently being edited)
+    const clash=recipes.find(r=>r.id!==editingId&&(r.codes||[]).some(x=>codeKey(x.color,x.digits)===key));
+    if(clash){ conflicts.push(`${key} is already recorded for "${clash.name}"`); return; }
+    if(!pendingCodes.some(x=>x.color===c.color&&x.digits===c.digits)) pendingCodes.push(c);
   });
+  if(conflicts.length) alert(`Code conflict:\n${conflicts.join('\n')}\n\nA code can only belong to one item.`);
   document.getElementById('new-code-input').value='';
   renderCodeList();
 }
@@ -558,7 +599,7 @@ function openModal(id){
     const r=recipes.find(x=>x.id===id); if(!r) return;
     pendingCodes=[...(r.codes||[])];
     document.getElementById('f-name').value=r.name||'';
-    document.getElementById('f-item-num').value=r.itemNum||'';
+    document.getElementById('f-item-num').value=r.id||'';
     document.getElementById('f-mat1-name').value=r.mat1Name||'';
     document.getElementById('f-mat1-cat').value=r.mat1Cat||'unknown';
     document.getElementById('f-mat2-name').value=r.mat2Name||'';
@@ -582,10 +623,16 @@ function openModalForPair(mat1,mat2,prefillColor,prefillDigits){
   const k1=KM[norm(mat1)],k2=KM[norm(mat2)];
   if(k1) document.getElementById('f-mat1-cat').value=k1.cat;
   if(k2) document.getElementById('f-mat2-cat').value=k2.cat;
-  // Pre-fill the code input if coming from a computed code card
+  // Auto-add the code when coming from a computed code card
   if(prefillColor&&prefillDigits){
-    const abbrev=Object.entries(PIP_ABBREV).find(([,v])=>v===prefillColor)?.[0]||prefillColor[0];
-    document.getElementById('new-code-input').value=`${abbrev}${prefillDigits}`;
+    const key=codeKey(prefillColor,prefillDigits);
+    const clash=recipes.find(r=>(r.codes||[]).some(x=>codeKey(x.color,x.digits)===key));
+    if(clash){
+      alert(`${key} is already recorded for "${clash.name}". Opening modal without the code pre-filled.`);
+    } else {
+      pendingCodes.push({color:prefillColor, digits:prefillDigits});
+      renderCodeList();
+    }
   }
 }
 
@@ -594,10 +641,16 @@ function outsideClose(e,id){if(e.target===document.getElementById(id)) document.
 
 function saveRecipe(){
   const name=document.getElementById('f-name').value.trim();
+  const itemNum=document.getElementById('f-item-num').value.trim();
   if(!name){alert('Item name is required.');return;}
+  if(!itemNum){alert('Item number is required.');return;}
+  // Check for duplicate item number (only when adding new, or changing the number on edit)
+  if(itemNum!==(editingId||'')&&recipes.some(r=>r.id===itemNum)){
+    alert(`Item number ${itemNum} is already used by "${recipes.find(r=>r.id===itemNum).name}".`);return;
+  }
   const recipe={
-    id:editingId||(Date.now().toString(36)+Math.random().toString(36).slice(2)),
-    name, itemNum:document.getElementById('f-item-num').value.trim(),
+    id:itemNum,
+    name,
     codes:[...pendingCodes],
     mat1Name:document.getElementById('f-mat1-name').value.trim(),
     mat1Cat:document.getElementById('f-mat1-cat').value,
@@ -606,7 +659,7 @@ function saveRecipe(){
     notes:document.getElementById('f-notes').value.trim(),
     addedAt:editingId?(recipes.find(r=>r.id===editingId)?.addedAt||Date.now()):Date.now(),
   };
-  if(editingId){const i=recipes.findIndex(r=>r.id===editingId);if(i!==-1)recipes[i]=recipe;}
+  if(editingId){const i=recipes.findIndex(r=>r.id===editingId);if(i!==-1)recipes[i]=recipe;else recipes.push(recipe);}
   else recipes.push(recipe);
   save(); renderJournal(); closeModal();
   if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
@@ -635,16 +688,35 @@ function clearAllConfirm(){
 // ═══════════════════════════════════════════════════
 let acIdxMap={};
 
-function showAcDropdown(acId,q,exclude,onClickFn){
+function matImgHtml(name){
+  const m=KM[norm(name)];
+  if(!m||!m.image) return '';
+  return `<img src="${esc(m.image)}" alt="" class="mat-ac-img" onerror="this.style.display='none'">`;
+}
+
+function comboTokenImg(name, deg=0){
+  const m=KM[norm(name)];
+  if(!m||!m.image) return '';
+  return `<img src="${esc(m.image)}" alt="${esc(name)}" class="combo-token-img" style="transform:rotate(${deg}deg)" title="${esc(name)} (${deg}°)" onerror="this.style.display='none'">`;
+}
+
+function tokenPairHtml(a, rotA, b, rotB){
+  return `<div class="combo-token-pair">${comboTokenImg(a,rotA)}${comboTokenImg(b,rotB)}</div>`;
+}
+
+function showAcDropdown(acId,q,exclude,onClickFn,filterFn){
   const all=allMatNames();
   const exNorm=exclude.map(norm);
-  const matches=all.filter(n=>!exNorm.includes(norm(n))&&(!q||n.toLowerCase().includes(q.toLowerCase()))).slice(0,14);
+  const matches=all
+    .filter(n=>!exNorm.includes(norm(n))&&(!q||n.toLowerCase().includes(q.toLowerCase())))
+    .filter(n=>!filterFn||filterFn(n))
+    .slice(0,14);
   const ac=document.getElementById(acId); if(!ac) return;
   if(!matches.length){ac.classList.add('hidden');return;}
   ac.innerHTML=matches.map((name,i)=>{
     const cat=catFor(name);
-    return `<div class="mat-autocomplete-item" data-idx="${i}" data-name="${esc(name)}" onmousedown="${onClickFn.replace(/MAT/g,esc(name)).replace(/NAME/g,esc(name))}">
-      <span class="mat-cat-dot ${cat}"></span>${esc(name)}
+    return `<div class="mat-autocomplete-item" data-idx="${i}" data-name="${esc(name)}" onmousedown="${onClickFn(name)}">
+      ${matImgHtml(name)}<span class="mat-cat-dot ${cat}"></span>${esc(name)}
     </div>`;
   }).join('');
   ac.classList.remove('hidden');
@@ -677,7 +749,7 @@ function fmAcShow(inputId,catId,acId){
     const cat=catFor(name);
     return `<div class="mat-autocomplete-item" data-idx="${i}" data-name="${esc(name)}"
       onmousedown="fmPick('${esc(name)}','${catId}','${acId}','${inputId}')">
-      <span class="mat-cat-dot ${cat}"></span>${esc(name)}
+      ${matImgHtml(name)}<span class="mat-cat-dot ${cat}"></span>${esc(name)}
     </div>`;
   }).join('');
   ac.classList.remove('hidden');
@@ -744,6 +816,71 @@ function triggerImport() {
   document.getElementById('import-file').click();
 }
 
+function detectImportConflicts(incoming, inNull) {
+  const conflicts = [];
+
+  // Build a lookup: code key → recipe id, for current data
+  const codeToId = {};
+  for (const r of recipes)
+    for (const c of (r.codes||[])) codeToId[codeKey(c.color,c.digits)] = r.id;
+
+  for (const r of incoming) {
+    const existing = recipes.find(x => x.id === r.id);
+    if (existing) {
+      if (existing.name !== r.name)
+        conflicts.push({type:'name', id:r.id, yours:existing.name, theirs:r.name});
+      const m1 = norm(existing.mat1Name||'')!==norm(r.mat1Name||'');
+      const m2 = norm(existing.mat2Name||'')!==norm(r.mat2Name||'');
+      if (m1||m2)
+        conflicts.push({type:'materials', id:r.id, name:r.name,
+          yours:`${existing.mat1Name||'?'} + ${existing.mat2Name||'?'}`,
+          theirs:`${r.mat1Name||'?'} + ${r.mat2Name||'?'}`});
+    }
+
+    for (const c of (r.codes||[])) {
+      const k = codeKey(c.color,c.digits);
+      // Code belongs to a different item in current data
+      if (codeToId[k] && codeToId[k] !== r.id) {
+        const owner = recipes.find(x=>x.id===codeToId[k]);
+        conflicts.push({type:'code-clash', code:k,
+          yours:`${owner?.name||codeToId[k]}`, theirs:r.name});
+      }
+      // Code is "Nothing" in current data but a discovery in the file
+      if (nullCodes[k])
+        conflicts.push({type:'discovery-vs-nothing', code:k, theirs:r.name, direction:'file-is-discovery'});
+    }
+  }
+
+  // Code is a discovery in current data but "Nothing" in the file
+  for (const k of Object.keys(inNull)) {
+    const owner = recipes.find(r=>(r.codes||[]).some(c=>codeKey(c.color,c.digits)===k));
+    if (owner)
+      conflicts.push({type:'discovery-vs-nothing', code:k, yours:owner.name, direction:'file-is-nothing'});
+  }
+
+  return conflicts;
+}
+
+function renderConflicts(conflicts) {
+  const el = document.getElementById('im-conflicts');
+  if (!conflicts.length) { el.innerHTML=''; return; }
+  const rows = conflicts.map(c => {
+    switch(c.type) {
+      case 'name':
+        return `<li><strong>${esc(c.id)}:</strong> name differs — yours <em>${esc(c.yours)}</em>, file <em>${esc(c.theirs)}</em></li>`;
+      case 'materials':
+        return `<li><strong>${esc(c.id)} ${esc(c.name)}:</strong> materials differ — yours <em>${esc(c.yours)}</em>, file <em>${esc(c.theirs)}</em></li>`;
+      case 'code-clash':
+        return `<li><strong>${esc(c.code)}:</strong> yours belongs to <em>${esc(c.yours)}</em>, file assigns it to <em>${esc(c.theirs)}</em></li>`;
+      case 'discovery-vs-nothing':
+        return c.direction==='file-is-discovery'
+          ? `<li><strong>${esc(c.code)}:</strong> you marked as dead-end, file records it as <em>${esc(c.theirs)}</em></li>`
+          : `<li><strong>${esc(c.code)}:</strong> you have it as <em>${esc(c.yours)}</em>, file marks it as dead-end</li>`;
+    }
+  }).join('');
+  el.innerHTML = `<div class="im-conflict-header">⚠ ${conflicts.length} conflict${conflicts.length>1?'s':''} found</div><ul class="im-conflict-list">${rows}</ul>`;
+}
+
 function importData(event) {
   const file = event.target.files[0]; if (!file) return;
   const reader = new FileReader();
@@ -755,9 +892,8 @@ function importData(event) {
       const inNull = d.nullCodes || {};
       pendingImport = { recipes: incoming, nullCodes: inNull, meta: d };
 
-      // Build summary
-      const fileUpdated  = d.lastUpdated  ? fmtDate(d.lastUpdated)  : (d.exportedAt ? fmtDate(d.exportedAt) : 'unknown');
-      const nullCount    = Object.keys(inNull).length;
+      const fileUpdated = d.lastUpdated ? fmtDate(d.lastUpdated) : (d.exportedAt ? fmtDate(d.exportedAt) : 'unknown');
+      const nullCount   = Object.keys(inNull).length;
       document.getElementById('im-summary').innerHTML =
         `<strong>File:</strong> ${esc(file.name)}<br>` +
         `<strong>Last updated:</strong> ${esc(fileUpdated)}<br>` +
@@ -767,6 +903,7 @@ function importData(event) {
       document.getElementById('im-current').innerHTML =
         `Your current data: ${recipes.length} recipe(s), ${Object.keys(nullCodes).length} dead-end code(s) — last updated ${esc(curUpdated)}`;
 
+      renderConflicts(detectImportConflicts(incoming, inNull));
       document.getElementById('import-overlay').classList.remove('hidden');
     } catch { alert('Could not parse JSON file.'); }
   };
@@ -797,6 +934,62 @@ function closeImportModal() {
 }
 
 // ═══════════════════════════════════════════════════
+// MARKS → ORIENTATIONS
+// ═══════════════════════════════════════════════════
+// Each material has 4 edge marks [left, right, top, bottom].
+// Rotating the token 90° clockwise cycles: left←bottom, right←top, top←left, bottom←right.
+// So the 4 rotations give these [left_active, right_active] pairs:
+//   0°  : [L, R]
+//   90° : [B, T]
+//   180°: [R, L]
+//   270°: [T, B]
+// Only rotations where the left (outer) edge is non-null are valid.
+
+function parseMark(s) {
+  if (!s) return null;
+  const i = s.indexOf(' ');
+  return { color: s.slice(0, i), count: parseInt(s.slice(i + 1)) };
+}
+
+function marksToOrientations(marks) {
+  if (!marks) return [];
+  const [L, R, T, B] = marks.map(parseMark);
+  // [left_edge, right_edge, css_rotation_degrees]
+  const rots = [[L, R, 0], [B, T, 90], [R, L, 180], [T, B, 270]];
+  return rots
+    .filter(([l]) => l !== null)
+    .map(([l, r, deg]) => [l.color, l.count, r ? r.color : null, r ? r.count : 0, deg]);
+}
+
+// Pre-populate tokenData from built-in marks for any material not already in tokenData.
+// User-loaded token data (via JSON file) takes priority and is preserved.
+function seedTokenDataFromMarks() {
+  for (const m of KNOWN_MATERIALS) {
+    const key = m.name.toLowerCase();
+    if (tokenData[key]) continue;
+    const orients = marksToOrientations(m.marks);
+    if (orients.length) tokenData[key] = orients;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// PERSISTENCE
+// ═══════════════════════════════════════════════════
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      recipes     = d.recipes     || [];
+      nullCodes   = d.nullCodes   || {};
+      tokenData   = d.tokenData   || {};
+      lastUpdated = d.lastUpdated || null;
+    }
+  } catch { /* corrupted storage — start fresh */ }
+  seedTokenDataFromMarks();
+}
+
+// ═══════════════════════════════════════════════════
 // KEYBOARD
 // ═══════════════════════════════════════════════════
 document.addEventListener('keydown',e=>{
@@ -809,3 +1002,4 @@ document.addEventListener('keydown',e=>{
 // ═══════════════════════════════════════════════════
 load();
 renderJournal();
+renderTokenNotice();

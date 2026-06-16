@@ -1,0 +1,179 @@
+{
+  "_readme": "Stone Saga material reference data. 'base' links a processed material back to its raw form. 'marks' are the 4 edge pips [left, right, top, bottom] — null means no pip on that edge. Images live in assets/images/materials/.",
+
+  "Bone": {
+    "cat": "animal", "base": null, "processed": "Bone (carved)",
+    "image": "assets/images/materials/bone.webp",
+    "marks": { "left": "Blue 2", "right": "Yellow 2", "top": "Yellow 3", "bottom": "Red 2" }
+  },
+  "Bone (carved)": {
+    "cat": "animal", "base": "Bone", "processed": null,
+    "image": "assets/images/materials/bone-carved.webp",
+    "marks": { "left": "Red 1", "right": "Yellow 3", "top": "Red 4", "bottom": "Yellow 4" }
+  },
+
+  "Hide": {
+    "cat": "animal", "base": null, "processed": "Hide (cured)",
+    "image": "assets/images/materials/hide.webp",
+    "marks": null
+  },
+  "Hide (cured)": {
+    "cat": "animal", "base": "Hide", "processed": null,
+    "image": "assets/images/materials/hide-cured.webp",
+    "marks": { "left": "Blue 3", "right": "Red 5", "top": null, "bottom": null }
+  },
+
+  "Shell": {
+    "cat": "animal", "base": null, "processed": "Shell (sharpened)",
+    "image": "assets/images/materials/shell.webp",
+    "marks": null
+  },
+  "Shell (sharpened)": {
+    "cat": "animal", "base": "Shell", "processed": null,
+    "image": "assets/images/materials/shell-sharpened.webp",
+    "marks": { "left": "Blue 6", "right": "Red 3", "top": "Yellow 5", "bottom": "Red 1" }
+  },
+
+  "Guts": {
+    "cat": "animal", "base": null, "processed": "Guts (cured)",
+    "image": "assets/images/materials/guts.webp",
+    "marks": null
+  },
+  "Guts (cured)": {
+    "cat": "animal", "base": "Guts", "processed": null,
+    "image": "assets/images/materials/guts-cured.webp",
+    "marks": { "left": "Yellow 1", "right": "Blue 1", "top": null, "bottom": "Red 3" }
+  },
+
+  "Feather": {
+    "cat": "animal", "base": null, "processed": "Feather (cut)",
+    "image": "assets/images/materials/feather.webp",
+    "marks": { "left": null, "right": "Blue 1", "top": null, "bottom": null }
+  },
+  "Feather (cut)": {
+    "cat": "animal", "base": "Feather", "processed": null,
+    "image": "assets/images/materials/feather-cut.webp",
+    "marks": { "left": "Yellow 1", "right": null, "top": null, "bottom": null }
+  },
+
+  "Tooth": {
+    "cat": "animal", "base": null, "processed": "Tooth (drilled)",
+    "image": "assets/images/materials/tooth.webp",
+    "marks": null
+  },
+  "Tooth (drilled)": {
+    "cat": "animal", "base": "Tooth", "processed": null,
+    "image": "assets/images/materials/tooth-drilled.webp",
+    "marks": { "left": "Blue 2", "right": null, "top": "Yellow 2", "bottom": null }
+  },
+
+  "Clay": {
+    "cat": "mineral", "base": null, "processed": "Clay (fired)",
+    "image": "assets/images/materials/clay.webp",
+    "marks": null
+  },
+  "Clay (fired)": {
+    "cat": "mineral", "base": "Clay", "processed": null,
+    "image": "assets/images/materials/clay-fired.webp",
+    "marks": { "left": "Red 6", "right": "Red 6", "top": null, "bottom": null }
+  },
+
+  "Cloudstone": {
+    "cat": "mineral", "base": null, "processed": "Cloudstone (shaped)",
+    "image": "assets/images/materials/cloudstone.webp",
+    "marks": null
+  },
+  "Cloudstone (shaped)": {
+    "cat": "mineral", "base": "Cloudstone", "processed": null,
+    "image": "assets/images/materials/cloudstone-shaped.webp",
+    "marks": { "left": "Blue 5", "right": "Yellow 4", "top": "Red 4", "bottom": "Blue 2" }
+  },
+
+  "Riverstone": {
+    "cat": "mineral", "base": null, "processed": "Riverstone (flaked)",
+    "image": "assets/images/materials/riverstone.webp",
+    "marks": null
+  },
+  "Riverstone (flaked)": {
+    "cat": "mineral", "base": "Riverstone", "processed": null,
+    "image": "assets/images/materials/riverstone-flaked.webp",
+    "marks": { "left": "Red 1", "right": "Yellow 4", "top": "Yellow 4", "bottom": "Red 3" }
+  },
+
+  "Sunstone": {
+    "cat": "mineral", "base": null, "processed": "Sunstone (shaped)",
+    "image": "assets/images/materials/sunstone.webp",
+    "marks": null
+  },
+  "Sunstone (shaped)": {
+    "cat": "mineral", "base": "Sunstone", "processed": null,
+    "image": "assets/images/materials/sunstone-shaped.webp",
+    "marks": { "left": "Red 5", "right": "Yellow 6", "top": null, "bottom": null }
+  },
+
+  "Wood": {
+    "cat": "plant", "base": null, "processed": "Wood (hardened)",
+    "image": "assets/images/materials/wood.webp",
+    "marks": { "left": "Blue 2", "right": "Yellow 2", "top": "Red 2", "bottom": "Yellow 3" }
+  },
+  "Wood (hardened)": {
+    "cat": "plant", "base": "Wood", "processed": null,
+    "image": "assets/images/materials/wood-hardened.webp",
+    "marks": { "left": "Red 1", "right": "Yellow 2", "top": "Red 3", "bottom": "Yellow 3" }
+  },
+
+  "Fiber": {
+    "cat": "plant", "base": null, "processed": "Fiber (woven)",
+    "image": "assets/images/materials/fiber.webp",
+    "marks": null
+  },
+  "Fiber (woven)": {
+    "cat": "plant", "base": "Fiber", "processed": null,
+    "image": "assets/images/materials/fiber-woven.webp",
+    "marks": { "left": "Yellow 1", "right": "Blue 1", "top": "Yellow 5", "bottom": "Red 5" }
+  },
+
+  "Pitch": {
+    "cat": "plant", "base": null, "processed": "Pitch (treated)",
+    "image": "assets/images/materials/pitch.webp",
+    "marks": null
+  },
+  "Pitch (treated)": {
+    "cat": "plant", "base": "Pitch", "processed": null,
+    "image": "assets/images/materials/pitch-treated.webp",
+    "marks": { "left": "Red 5", "right": null, "top": null, "bottom": null }
+  },
+
+  "Moonblood": {
+    "cat": "rare", "base": null, "processed": "Moonblood (solid)",
+    "image": "assets/images/materials/moonblood.webp",
+    "marks": null
+  },
+  "Moonblood (solid)": {
+    "cat": "rare", "base": "Moonblood", "processed": null,
+    "image": "assets/images/materials/moonblood-solid.webp",
+    "marks": { "left": "Red 1", "right": "Yellow 6", "top": "Red 2", "bottom": "Grey 6" }
+  },
+
+  "Coral": {
+    "cat": "rare", "base": null, "processed": "Coral (living)",
+    "image": "assets/images/materials/coral.webp",
+    "marks": null
+  },
+  "Coral (living)": {
+    "cat": "rare", "base": "Coral", "processed": null,
+    "image": "assets/images/materials/coral-living.webp",
+    "marks": { "left": "Purple 6", "right": "Red 4", "top": "Purple 6", "bottom": "Yellow 4" }
+  },
+
+  "Silk": {
+    "cat": "rare", "base": null, "processed": "Silk (woven)",
+    "image": "assets/images/materials/silk.webp",
+    "marks": { "left": "Blue 1", "right": "Yellow 1", "top": "Red 3", "bottom": null }
+  },
+  "Silk (woven)": {
+    "cat": "rare", "base": "Silk", "processed": null,
+    "image": "assets/images/materials/silk-woven.webp",
+    "marks": { "left": "Blue 2", "right": "Red 5", "top": null, "bottom": null }
+  }
+}
