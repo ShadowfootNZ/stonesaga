@@ -119,40 +119,26 @@
       <div class="hint">B=Blue, R=Red, Y=Yellow, P=Purple, G=Grey followed by 4 digits. Separate multiple codes with commas or spaces.</div>
     </div>
     <div class="form-group">
-      <label>Material 1 *</label>
+      <label>Material*</label>
       <div class="form-row">
         <div class="form-group ac-wrap">
           <input class="form-control" id="f-mat1-name" placeholder="e.g. Riverstone (flaked)" autocomplete="off"
-            oninput="fmAcShow('f-mat1-name','f-mat1-cat','fac1')"
-            onkeydown="fmAcKey(event,'f-mat1-name','f-mat1-cat','fac1')"
-            onfocus="fmAcShow('f-mat1-name','f-mat1-cat','fac1')">
+            oninput="fmAcShow('f-mat1-name','fac1')"
+            onkeydown="fmAcKey(event,'f-mat1-name','fac1')"
+            onfocus="fmAcShow('f-mat1-name','fac1')">
           <div class="mat-autocomplete hidden" id="fac1"></div>
-        </div>
-        <div class="form-group" style="max-width:130px">
-          <select class="form-control" id="f-mat1-cat">
-            <option value="unknown">Category…</option>
-            <option value="animal">Animal</option><option value="plant">Plant</option>
-            <option value="mineral">Mineral</option><option value="rare">Rare</option>
-          </select>
         </div>
       </div>
     </div>
     <div class="form-group">
-      <label>Material 2 *</label>
+      <label>Material*</label>
       <div class="form-row">
         <div class="form-group ac-wrap">
           <input class="form-control" id="f-mat2-name" placeholder="e.g. Feather" autocomplete="off"
-            oninput="fmAcShow('f-mat2-name','f-mat2-cat','fac2')"
-            onkeydown="fmAcKey(event,'f-mat2-name','f-mat2-cat','fac2')"
-            onfocus="fmAcShow('f-mat2-name','f-mat2-cat','fac2')">
+            oninput="fmAcShow('f-mat2-name','fac2')"
+            onkeydown="fmAcKey(event,'f-mat2-name','fac2')"
+            onfocus="fmAcShow('f-mat2-name','fac2')">
           <div class="mat-autocomplete hidden" id="fac2"></div>
-        </div>
-        <div class="form-group" style="max-width:130px">
-          <select class="form-control" id="f-mat2-cat">
-            <option value="unknown">Category…</option>
-            <option value="animal">Animal</option><option value="plant">Plant</option>
-            <option value="mineral">Mineral</option><option value="rare">Rare</option>
-          </select>
         </div>
       </div>
     </div>
@@ -186,6 +172,19 @@
     <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:1rem">
       <button class="btn btn-primary" onclick="setCodeStatus('nothing')">Save</button>
       <button class="btn" onclick="closeStatusModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- PICK RECIPE MODAL -->
+<div class="modal-overlay hidden" id="pick-overlay" onclick="outsideClose(event,'pick-overlay')">
+  <div class="modal" style="max-width:420px">
+    <h2 id="pick-title">Add to existing recipe?</h2>
+    <p id="pick-body" style="margin-bottom:1rem;color:var(--flint);font-size:.9rem"></p>
+    <div id="pick-list" style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.2rem"></div>
+    <div style="display:flex;gap:.7rem;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="pickNew()">Create new recipe</button>
+      <button class="btn" onclick="closePick()">Cancel</button>
     </div>
   </div>
 </div>

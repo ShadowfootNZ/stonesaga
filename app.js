@@ -230,12 +230,12 @@ function renderJournal(){
         <div class="recipe-name">${esc(r.name)}</div>
         ${r.id?`<div class="item-number">${esc(r.id)}</div>`:''}
       </div>
-      <div class="code-chips">${chips||'<span style="color:var(--flint);font-size:.8rem">No codes recorded</span>'}</div>
       <div class="recipe-materials">
         <span class="material-tag ${r.mat1Cat||'unknown'}">${esc(r.mat1Name||'?')}</span>
         <span style="color:var(--flint)">+</span>
         <span class="material-tag ${r.mat2Cat||'unknown'}">${esc(r.mat2Name||'?')}</span>
       </div>
+      <div class="code-chips">${chips||'<span style="color:var(--flint);font-size:.8rem">No codes recorded</span>'}</div>
       ${r.notes?`<div class="recipe-notes">${esc(r.notes)}</div>`:''}
       <div class="card-actions">
         <button class="btn btn-sm" onclick="editRecipe('${r.id}')">Edit</button>
@@ -343,11 +343,6 @@ function renderExplorer(){
       if(norm(a)===norm(b)) continue;
       const fwd=`${norm(a)}|${norm(b)}`;
       if(!seen.has(fwd)){seen.add(fwd);pairs.push([a,b]);}
-      // also reverse unless it's the same (only when bSet is explicit)
-      if(mat2){
-        const rev=`${norm(b)}|${norm(a)}`;
-        if(!seen.has(rev)){seen.add(rev);pairs.push([b,a]);}
-      }
     }
   }
 
@@ -402,18 +397,22 @@ function renderExplorer(){
 
     // Discovered
     for(const r of matchingRecipes){
-      const chips=(r.codes||[]).map(c=>`<span class="recipe-code" style="font-size:.75rem">${pipHtml(c.color)} ${esc(c.color)} ${esc(c.digits)}</span>`).join(' ');
-      const firstCode=r.codes&&r.codes[0];
+      const rcodes=r.codes||[];
+      const chips=rcodes.map(c=>`<span class="recipe-code" style="font-size:.75rem">${pipHtml(c.color)} ${esc(c.color)} ${esc(c.digits)}</span>`).join(' ');
       let rotA=0,rotB=0;
-      if(firstCode&&computedCodes){
-        const match=computedCodes.find(c=>c.color===firstCode.color&&c.digits===firstCode.digits);
-        if(match){rotA=match.rotA;rotB=match.rotB;}
+      if(rcodes.length&&computedCodes){
+        let found=false;
+        for(const c of rcodes){
+          const m=computedCodes.find(x=>x.color===c.color&&x.digits===c.digits);
+          if(m){rotA=m.rotA;rotB=m.rotB;found=true;break;}
+        }
+        if(!found) continue; // no code on this recipe matches this material ordering — skip
       }
       sec+=`<div class="combo-card state-discovered">
         ${tokenPairHtml(a,rotA,b,rotB)}
-        <div class="combo-header"><div>${chips}</div><span class="status-badge discovered">Discovered</span></div>
         <div class="combo-item-name">${esc(r.name)}</div>
         ${r.id?`<div class="combo-item-num">${esc(r.id)}</div>`:''}
+        <div>${chips}</div>
         <div class="combo-actions"><button class="btn btn-sm" onclick="editRecipe('${r.id}')">Edit</button></div>
       </div>`;
     }
@@ -601,38 +600,72 @@ function openModal(id){
     document.getElementById('f-name').value=r.name||'';
     document.getElementById('f-item-num').value=r.id||'';
     document.getElementById('f-mat1-name').value=r.mat1Name||'';
-    document.getElementById('f-mat1-cat').value=r.mat1Cat||'unknown';
     document.getElementById('f-mat2-name').value=r.mat2Name||'';
-    document.getElementById('f-mat2-cat').value=r.mat2Cat||'unknown';
     document.getElementById('f-notes').value=r.notes||'';
   } else {
     pendingCodes=[];
     ['f-name','f-item-num','f-mat1-name','f-mat2-name','f-notes','new-code-input'].forEach(i=>document.getElementById(i).value='');
-    document.getElementById('f-mat1-cat').value='unknown';
-    document.getElementById('f-mat2-cat').value='unknown';
   }
   renderCodeList();
   document.getElementById('modal-overlay').classList.remove('hidden');
   document.getElementById('f-name').focus();
 }
 
+let pickState={};
+
 function openModalForPair(mat1,mat2,prefillColor,prefillDigits){
+  const existing=recipes.filter(r=>{
+    const m1=norm(r.mat1Name||''),m2=norm(r.mat2Name||'');
+    return (m1===norm(mat1)&&m2===norm(mat2))||(m1===norm(mat2)&&m2===norm(mat1));
+  });
+  if(existing.length){
+    openPickModal(existing,mat1,mat2,prefillColor,prefillDigits);
+    return;
+  }
+  _openNewRecipeForPair(mat1,mat2,prefillColor,prefillDigits);
+}
+
+function openPickModal(existing,mat1,mat2,prefillColor,prefillDigits){
+  pickState={mat1,mat2,prefillColor,prefillDigits};
+  const codeLabel=prefillColor&&prefillDigits?`${prefillColor} ${prefillDigits}`:'the new code';
+  document.getElementById('pick-body').textContent=`Add ${codeLabel} to an existing recipe, or create a new one.`;
+  document.getElementById('pick-list').innerHTML=existing.map(r=>`
+    <button class="btn" style="text-align:left;width:100%;padding:.5rem .9rem" onclick="pickRecipe('${esc(r.id)}')">
+      <strong>${esc(r.name)}</strong> <span style="color:var(--flint);font-size:.8rem;margin-left:.4rem">${esc(r.id)}</span>
+    </button>`).join('');
+  document.getElementById('pick-overlay').classList.remove('hidden');
+}
+
+function closePick(){document.getElementById('pick-overlay').classList.add('hidden');}
+
+function pickRecipe(id){
+  closePick();
+  const {prefillColor,prefillDigits}=pickState;
+  openModal(id);
+  if(prefillColor&&prefillDigits){
+    const key=codeKey(prefillColor,prefillDigits);
+    const alreadyOnThis=pendingCodes.some(c=>codeKey(c.color,c.digits)===key);
+    const clash=!alreadyOnThis&&recipes.find(r=>r.id!==id&&(r.codes||[]).some(x=>codeKey(x.color,x.digits)===key));
+    if(clash) alert(`${key} is already recorded for "${clash.name}".`);
+    else if(!alreadyOnThis){pendingCodes.push({color:prefillColor,digits:prefillDigits});renderCodeList();}
+  }
+}
+
+function pickNew(){
+  closePick();
+  const {mat1,mat2,prefillColor,prefillDigits}=pickState;
+  _openNewRecipeForPair(mat1,mat2,prefillColor,prefillDigits);
+}
+
+function _openNewRecipeForPair(mat1,mat2,prefillColor,prefillDigits){
   openModal();
   document.getElementById('f-mat1-name').value=mat1;
   document.getElementById('f-mat2-name').value=mat2;
-  const k1=KM[norm(mat1)],k2=KM[norm(mat2)];
-  if(k1) document.getElementById('f-mat1-cat').value=k1.cat;
-  if(k2) document.getElementById('f-mat2-cat').value=k2.cat;
-  // Auto-add the code when coming from a computed code card
   if(prefillColor&&prefillDigits){
     const key=codeKey(prefillColor,prefillDigits);
     const clash=recipes.find(r=>(r.codes||[]).some(x=>codeKey(x.color,x.digits)===key));
-    if(clash){
-      alert(`${key} is already recorded for "${clash.name}". Opening modal without the code pre-filled.`);
-    } else {
-      pendingCodes.push({color:prefillColor, digits:prefillDigits});
-      renderCodeList();
-    }
+    if(clash) alert(`${key} is already recorded for "${clash.name}". Opening modal without the code pre-filled.`);
+    else{pendingCodes.push({color:prefillColor,digits:prefillDigits});renderCodeList();}
   }
 }
 
@@ -653,9 +686,9 @@ function saveRecipe(){
     name,
     codes:[...pendingCodes],
     mat1Name:document.getElementById('f-mat1-name').value.trim(),
-    mat1Cat:document.getElementById('f-mat1-cat').value,
+    mat1Cat:KM[norm(document.getElementById('f-mat1-name').value.trim())]?.cat||'unknown',
     mat2Name:document.getElementById('f-mat2-name').value.trim(),
-    mat2Cat:document.getElementById('f-mat2-cat').value,
+    mat2Cat:KM[norm(document.getElementById('f-mat2-name').value.trim())]?.cat||'unknown',
     notes:document.getElementById('f-notes').value.trim(),
     addedAt:editingId?(recipes.find(r=>r.id===editingId)?.addedAt||Date.now()):Date.now(),
   };
@@ -667,8 +700,6 @@ function saveRecipe(){
 
 function editRecipe(id){
   openModal(id);
-  if(!document.getElementById('tab-journal').classList.contains('active'))
-    switchTab('journal',document.querySelector('.tab-btn'));
 }
 function deleteRecipe(id){
   const r=recipes.find(x=>x.id===id);
@@ -738,34 +769,30 @@ function acKeyNav(e,acId,onConfirm,idxMap,mapKey){
 
 // form material autocomplete
 let fmIdxMap={};
-function fmAcShow(inputId,catId,acId){
+function fmAcShow(inputId,acId){
   const q=document.getElementById(inputId).value;
-  const exact=KM[q.trim().toLowerCase()];
-  if(exact) document.getElementById(catId).value=exact.cat;
   const matches=allMatNames().filter(n=>!q||n.toLowerCase().includes(q.toLowerCase())).slice(0,12);
   const ac=document.getElementById(acId); if(!ac) return;
   if(!matches.length){ac.classList.add('hidden');return;}
   ac.innerHTML=matches.map((name,i)=>{
     const cat=catFor(name);
     return `<div class="mat-autocomplete-item" data-idx="${i}" data-name="${esc(name)}"
-      onmousedown="fmPick('${esc(name)}','${catId}','${acId}','${inputId}')">
+      onmousedown="fmPick('${esc(name)}','${acId}','${inputId}')">
       ${matImgHtml(name)}<span class="mat-cat-dot ${cat}"></span>${esc(name)}
     </div>`;
   }).join('');
   ac.classList.remove('hidden');
   fmIdxMap[acId]=-1;
 }
-function fmAcKey(e,inputId,catId,acId){
+function fmAcKey(e,inputId,acId){
   acKeyNav(e,acId,idx=>{
     const items=document.querySelectorAll(`#${acId} .mat-autocomplete-item`);
-    if(idx>=0&&items[idx]) fmPick(items[idx].dataset.name,catId,acId,inputId);
+    if(idx>=0&&items[idx]) fmPick(items[idx].dataset.name,acId,inputId);
     else hideAc(acId);
   },fmIdxMap,acId);
 }
-function fmPick(name,catId,acId,inputId){
+function fmPick(name,acId,inputId){
   document.getElementById(inputId).value=name;
-  const m=KM[name.toLowerCase()];
-  if(m) document.getElementById(catId).value=m.cat;
   hideAc(acId); fmIdxMap[acId]=-1;
 }
 
@@ -993,7 +1020,7 @@ function load() {
 // KEYBOARD
 // ═══════════════════════════════════════════════════
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeModal();closeStatusModal();closeImportModal();}
+  if(e.key==='Escape'){closeModal();closeStatusModal();closeImportModal();closePick();}
   if(e.key==='n'&&!e.target.matches('input,textarea,select')) openModal();
 });
 
