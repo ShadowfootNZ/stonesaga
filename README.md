@@ -14,7 +14,7 @@ host it on GitHub Pages.
 | `index.html` | Page markup |
 | `styles.css` | All styling |
 | `app.js` | Application logic |
-| `token-data.example.json` | Sample token pip data (format reference) |
+| `materials.json` | Material definitions — edit this to add new materials |
 
 ## Running it
 
