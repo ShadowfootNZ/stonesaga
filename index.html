@@ -18,6 +18,7 @@
     <button class="btn" onclick="exportData()">Export JSON</button>
     <button class="btn" onclick="triggerImportTokens()" title="Load token pip data JSON">Load Token Data</button>
     <button class="btn btn-primary" onclick="openModal()">+ Add Recipe</button>
+    <button class="btn" onclick="openHelp()" title="Help">?</button>
     <input type="file" id="import-file" accept=".json" onchange="importData(event)">
     <input type="file" id="import-tokens-file" accept=".json" onchange="importTokenData(event)">
   </div>
@@ -208,6 +209,50 @@
   </div>
 </div>
 
+<!-- HELP MODAL -->
+<div class="modal-overlay hidden" id="help-overlay" onclick="outsideClose(event,'help-overlay')">
+  <div class="modal" style="max-width:560px">
+    <h2>How to use this app</h2>
+
+    <div class="help-section">
+      <h3>Recording a discovery</h3>
+      <p>Go to the <strong>Crafting</strong> tab, pick the two materials you used, and click <strong>Show Combinations</strong>. Find the code that matched and click <strong>Record discovery</strong> — the form opens pre-filled with the materials and code. Give the item a name and its card number, then save.</p>
+      <p>You can also add a recipe manually from any tab using <strong>+ Add Recipe</strong> in the header.</p>
+    </div>
+
+    <div class="help-section">
+      <h3>Crafting codes</h3>
+      <p>Codes can be typed in shorthand: one letter for the colour followed by four digits — e.g. <strong>R1311</strong> for Red 1311. Letters: B&nbsp;=&nbsp;Blue, R&nbsp;=&nbsp;Red, Y&nbsp;=&nbsp;Yellow, P&nbsp;=&nbsp;Purple, G&nbsp;=&nbsp;Grey. Separate multiple codes with commas or spaces.</p>
+    </div>
+
+    <div class="help-section">
+      <h3>Crafting tab card colours</h3>
+      <ul>
+        <li><span class="help-swatch" style="background:var(--discovered-bg);border-color:var(--discovered-border)"></span><strong>Green</strong> — item already discovered with this combination</li>
+        <li><span class="help-swatch" style="background:var(--nothing-bg);border-color:var(--nothing-border)"></span><strong>Terracotta</strong> — tried this code, nothing crafted</li>
+        <li><span class="help-swatch" style="background:var(--ash);border-color:var(--smoke)"></span><strong>Beige</strong> — not yet tried</li>
+      </ul>
+    </div>
+
+    <div class="help-section">
+      <h3>Explorer filters</h3>
+      <p><strong>All</strong> — shows every computed code for the selected materials.<br>
+      <strong>Unknown</strong> — hides combinations that have already been resolved (discovered or dead-end).<br>
+      <strong>Known</strong> — shows only material pairs where at least one item has been found.</p>
+    </div>
+
+    <div class="help-section">
+      <h3>Sharing with the table</h3>
+      <p>Use <strong>Export JSON</strong> to save your current data, then share the file. Others import it with <strong>Import JSON</strong> — choose <strong>Merge</strong> to combine with their existing data, or <strong>Overwrite</strong> to replace it entirely.</p>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="closeHelp()">Close</button>
+    </div>
+  </div>
+</div>
+
 <script src="app.js"></script>
+<script type="module" src="/analytics.js"></script>
 </body>
 </html>
