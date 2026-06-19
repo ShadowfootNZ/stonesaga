@@ -181,6 +181,15 @@ main{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:2rem 1.5
 ::-webkit-scrollbar-thumb{background:var(--smoke);border-radius:3px;}
 #import-file,#import-tokens-file{display:none;}
 
+.help-section{margin-bottom:1.2rem;padding-bottom:1.2rem;border-bottom:1px solid var(--smoke);}
+.help-section:last-of-type{border-bottom:none;margin-bottom:0;padding-bottom:0;}
+.help-section h3{font-family:'Cinzel',serif;font-size:.85rem;font-weight:600;color:var(--ochre);letter-spacing:.05em;margin-bottom:.45rem;}
+.help-section p{font-size:.9rem;line-height:1.6;color:var(--chalk);margin-bottom:.4rem;}
+.help-section p:last-child{margin-bottom:0;}
+.help-section ul{list-style:none;display:flex;flex-direction:column;gap:.4rem;font-size:.9rem;}
+.help-section li{display:flex;align-items:center;gap:.6rem;}
+.help-swatch{display:inline-block;width:14px;height:14px;border:2px solid;flex-shrink:0;}
+
 @media(max-width:768px){
   .recipe-grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));}
   .combo-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));}

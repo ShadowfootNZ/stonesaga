@@ -651,6 +651,8 @@ function openPickModal(existing,mat1,mat2,prefillColor,prefillDigits){
 }
 
 function closePick(){document.getElementById('pick-overlay').classList.add('hidden');}
+function openHelp(){document.getElementById('help-overlay').classList.remove('hidden');}
+function closeHelp(){document.getElementById('help-overlay').classList.add('hidden');}
 
 function pickRecipe(id){
   closePick();
@@ -1034,7 +1036,7 @@ function load() {
 // KEYBOARD
 // ═══════════════════════════════════════════════════
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeModal();closeStatusModal();closeImportModal();closePick();}
+  if(e.key==='Escape'){closeModal();closeStatusModal();closeImportModal();closePick();closeHelp();}
   if(e.key==='n'&&!e.target.matches('input,textarea,select')) openModal();
 });
 
