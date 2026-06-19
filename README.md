@@ -19,7 +19,7 @@ host it on GitHub Pages.
 ## Running it
 
 Open `index.html` in a browser, or enable GitHub Pages (Settings → Pages → deploy from
-branch, root) and visit `https://shadowfootnz.github.io/stone-saga/`.
+branch, root) and visit [https://shadowfootnz.github.io/stonesaga/](https://shadowfootnz.github.io/stonesaga/).
 
 All data is stored in the browser's `localStorage`, which is per-browser and per-origin.
 Nothing is sent anywhere. To share data between people, use **Export JSON** and have
