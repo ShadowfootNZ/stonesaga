@@ -115,6 +115,18 @@
 //   - Consider a "Last synced" timestamp and conflict warning if both local and Drive
 //     were updated since the last sync.
 //
+// ── APPLE HOME SCREEN ICON ─────────────────────────
+// TODO: Add an Apple touch icon so the app looks polished when saved to an iOS
+//   home screen (the primary play surface — iPad with Apple Pencil).
+//   - Create a 180×180px PNG icon (apple-touch-icon.png) and place it in the root.
+//   - Add to index.html <head>:
+//       <link rel="apple-touch-icon" href="apple-touch-icon.png">
+//       <meta name="apple-mobile-web-app-capable" content="yes">
+//       <meta name="apple-mobile-web-app-title" content="Stonesaga">
+//   - Optionally add a web app manifest (manifest.json) for Android / Chrome install
+//     support alongside the Apple meta tags.
+//   - The icon design should fit the game's aesthetic (cave/stone motif).
+//
 // ── ITEM COLOUR / MATERIAL TYPE ────────────────────
 // TODO: Allow colours beyond Blue/Red/Yellow/Purple/Grey when adding a discovered item.
 //   - Some item cards are materials discovered during play (e.g. pigment stones, rare
