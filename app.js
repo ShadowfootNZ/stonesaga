@@ -132,8 +132,8 @@
 // ═══════════════════════════════════════════════════
 const STORAGE_KEY   = 'stonesaga_v2';
 const DRIVE_SYNC_URL = 'https://script.google.com/macros/s/AKfycbyYhWRyscNnJnujY6e_TaDHKd23R--lPKkJ1VqdfWlc1uPOhGPeNFYB6WY3jzVtga6nzw/exec'; 
-const PIP_COLORS  = ['Blue','Red','Yellow','Purple','Grey','Green','Orange'];
-const PIP_CSS     = {Blue:'blue',Red:'red',Yellow:'yellow',Purple:'purple',Grey:'grey',Green:'green',Orange:'orange'};
+const PIP_COLORS  = ['Blue','Red','Yellow','Purple','Grey','Green','Orange','Silver'];
+const PIP_CSS     = {Blue:'blue',Red:'red',Yellow:'yellow',Purple:'purple',Grey:'grey',Green:'green',Orange:'orange',Silver:'silver'};
 
 // Materials are loaded from materials.json at startup.
 // Edit that file to add new materials; the hardcoded list below is a fallback
@@ -630,7 +630,7 @@ function renderExplorer(){
 // ═══════════════════════════════════════════════════
 // CODE SHORTHAND PARSER
 // ═══════════════════════════════════════════════════
-const PIP_ABBREV = {B:'Blue',R:'Red',Y:'Yellow',P:'Purple',G:'Grey',GN:'Green',O:'Orange'};
+const PIP_ABBREV = {B:'Blue',R:'Red',Y:'Yellow',P:'Purple',G:'Grey',GN:'Green',O:'Orange',S:'Silver'};
 
 // Parse a string like "B2132, R4210  Y0031" into [{color,digits}, ...]
 // Returns {codes, errors}
@@ -640,7 +640,7 @@ function parseCodeString(str) {
   // Split on commas and/or whitespace, filter empty
   const tokens = str.toUpperCase().split(/[\s,]+/).filter(Boolean);
   for (const tok of tokens) {
-    const m = tok.match(/^(GN|[BRYPO])(\d{4})$/);
+    const m = tok.match(/^(GN|[BRYPOGS])(\d{4})$/);
     if (!m) { errors.push(tok); continue; }
     const color = PIP_ABBREV[m[1]];
     if (!color) { errors.push(tok); continue; }
