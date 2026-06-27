@@ -12,15 +12,17 @@ SSH="ssh -i ~/.ssh/deploy_key -p ${SSH_PORT:-22}"
 # Ensure the remote directory exists
 $SSH "$SSH_USER@$SSH_HOST" "mkdir -p '$REMOTE_PATH'"
 
-# Upload only the files the web server needs
-tar -czf - \
-  index.html \
-  styles.css \
-  app.js \
-  analytics.js \
-  materials.json \
-  catalogue.json \
-  assets/ \
+# Stage files, stamping the git SHA into index.html so browsers
+# always fetch updated assets after a deploy (cache-busting)
+VERSION=$(git rev-parse --short HEAD)
+STAGE=$(mktemp -d)
+sed "s/STAMP/$VERSION/g" index.html > "$STAGE/index.html"
+cp styles.css app.js analytics.js materials.json catalogue.json "$STAGE/"
+cp -r assets/ "$STAGE/assets/"
+
+# Upload
+tar -czf - -C "$STAGE" . \
   | $SSH "$SSH_USER@$SSH_HOST" "tar -xzf - -C '$REMOTE_PATH'"
 
-echo "Deployed to $SSH_HOST:$REMOTE_PATH"
+rm -rf "$STAGE"
+echo "Deployed $VERSION to $SSH_HOST:$REMOTE_PATH"
