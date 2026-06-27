@@ -17,6 +17,7 @@
   <div class="header-actions">
     <button class="btn" onclick="triggerImport()">Import JSON</button>
     <button class="btn" onclick="exportData()">Export JSON</button>
+    <button class="btn" onclick="openDriveModal()">Drive Sync</button>
     <button class="btn" onclick="triggerImportTokens()" title="Load token pip data JSON">Load Token Data</button>
     <button class="btn btn-primary" onclick="openModal()">+ Add Recipe</button>
     <button class="btn" onclick="openHelp()" title="Help">?</button>
@@ -34,8 +35,10 @@
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('explorer',this)">Crafting</button>
     <button class="tab-btn" onclick="switchTab('journal',this)">Recipes</button>
-    <!-- TODO: Add tabs for each journal section:
+    <button class="tab-btn" onclick="switchTab('materials',this)">Materials</button>
+    <!-- TODO: Add tabs for remaining journal sections:
          Valley Map | Culture | Behemoths | Challenges | Looming | Investigations | Cave Wall | Notes
+         (Materials tab already implemented)
          Each maps to a tab-panel below and a switchTab() call in app.js. -->
   </div>
 
@@ -103,6 +106,18 @@
     <div class="recipe-grid" id="recipe-grid"></div>
   </div>
 
+  <!-- MATERIALS -->
+  <div class="tab-panel" id="tab-materials">
+    <div class="mat-tab-controls">
+      <input class="search-box" type="text" id="mat-search" placeholder="Search materials…" oninput="renderMaterials()">
+      <select class="mat-cat-select" id="mat-cat-filter" onchange="renderMaterials()">
+        <option value="">All categories</option>
+      </select>
+      <button class="btn btn-primary" onclick="openAddMaterialModal()">+ Add Material</button>
+    </div>
+    <div class="material-grid" id="materials-grid"></div>
+  </div>
+
   <!-- EXPLORER -->
   <div class="tab-panel active" id="tab-explorer">
     <div id="token-data-notice"></div>
@@ -165,7 +180,7 @@
           onkeydown="if(event.key==='Enter'){event.preventDefault();addCodes();}">
         <button class="btn" onclick="addCodes()" style="white-space:nowrap">+ Add</button>
       </div>
-      <div class="hint">B=Blue, R=Red, Y=Yellow, P=Purple, G=Grey followed by 4 digits. Separate multiple codes with commas or spaces.</div>
+      <div class="hint">B=Blue, R=Red, Y=Yellow, P=Purple, G=Grey, Gn=Green, O=Orange followed by 4 digits. Separate multiple codes with commas or spaces.</div>
     </div>
     <div class="form-group">
       <label>Material*</label>
@@ -214,7 +229,7 @@
           placeholder="e.g. B2132"
           style="max-width:180px"
           onkeydown="if(event.key==='Enter') setCodeStatus('nothing')">
-        <div class="hint">B=Blue, R=Red, Y=Yellow, P=Purple, G=Grey followed by 4 digits.</div>
+        <div class="hint">B=Blue, R=Red, Y=Yellow, P=Purple, G=Grey, Gn=Green, O=Orange followed by 4 digits.</div>
       </div>
       <div id="sm-existing" style="margin-top:.6rem"></div>
     </div>
@@ -257,6 +272,22 @@
   </div>
 </div>
 
+<!-- DRIVE SYNC MODAL -->
+<div class="modal-overlay hidden" id="drive-overlay" onclick="outsideClose(event,'drive-overlay')">
+  <div class="modal" style="max-width:460px">
+    <h2>Drive Sync</h2>
+    <div id="drive-modal-status" style="margin-bottom:1.2rem;font-size:.92rem;line-height:1.7;color:var(--chalk)"></div>
+    <div id="drive-modal-actions" style="display:flex;gap:.7rem;flex-wrap:wrap"></div>
+    <div style="margin-top:1rem;font-size:.78rem;color:var(--flint)">
+      Sync fetches the latest state from Drive, shows the merge screen, then pushes the result back.
+      Your <strong>Export JSON</strong> now includes the Drive file ID — share that file to connect your group.
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeDriveModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- HELP MODAL -->
 <div class="modal-overlay hidden" id="help-overlay" onclick="outsideClose(event,'help-overlay')">
   <div class="modal" style="max-width:560px">
@@ -270,7 +301,7 @@
 
     <div class="help-section">
       <h3>Crafting codes</h3>
-      <p>Codes can be typed in shorthand: one letter for the colour followed by four digits — e.g. <strong>R1311</strong> for Red 1311. Letters: B&nbsp;=&nbsp;Blue, R&nbsp;=&nbsp;Red, Y&nbsp;=&nbsp;Yellow, P&nbsp;=&nbsp;Purple, G&nbsp;=&nbsp;Grey. Separate multiple codes with commas or spaces.</p>
+      <p>Codes can be typed in shorthand: one letter for the colour followed by four digits — e.g. <strong>R1311</strong> for Red 1311. Letters: B&nbsp;=&nbsp;Blue, R&nbsp;=&nbsp;Red, Y&nbsp;=&nbsp;Yellow, P&nbsp;=&nbsp;Purple, G&nbsp;=&nbsp;Grey, Gn&nbsp;=&nbsp;Green, O&nbsp;=&nbsp;Orange. Separate multiple codes with commas or spaces.</p>
     </div>
 
     <div class="help-section">
@@ -296,6 +327,70 @@
 
     <div class="modal-actions">
       <button class="btn btn-primary" onclick="closeHelp()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT MATERIAL MODAL -->
+<div class="modal-overlay hidden" id="add-material-overlay" onclick="outsideClose(event,'add-material-overlay')">
+  <div class="modal" style="max-width:520px">
+    <h2 id="am-title">Add Material</h2>
+
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>Name *</label>
+        <input class="form-control" id="am-name" placeholder="e.g. Rope">
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <input class="form-control" id="am-cat" list="am-cat-list" placeholder="unknown">
+        <datalist id="am-cat-list"></datalist>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Processed form <span style="font-weight:normal;font-style:italic;color:var(--flint)">(name of its processed version, if any)</span></label>
+      <input class="form-control" id="am-processed" placeholder="e.g. Rope (knotted)">
+    </div>
+
+    <div class="form-group">
+      <label>Image path / URL <span style="font-weight:normal;font-style:italic;color:var(--flint)">(optional)</span></label>
+      <input class="form-control" id="am-image" placeholder="e.g. assets/images/materials/rope.webp">
+    </div>
+
+    <div class="form-group">
+      <label>Pip marks <span style="font-weight:normal;font-style:italic;color:var(--flint)">(Colour + number per edge, e.g. Blue 2 — leave blank if unknown or not applicable)</span></label>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Left</label>
+          <input class="form-control" id="am-mark-left" placeholder="e.g. Blue 2">
+        </div>
+        <div class="form-group">
+          <label>Right</label>
+          <input class="form-control" id="am-mark-right" placeholder="">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Top</label>
+          <input class="form-control" id="am-mark-top" placeholder="">
+        </div>
+        <div class="form-group">
+          <label>Bottom</label>
+          <input class="form-control" id="am-mark-bottom" placeholder="">
+        </div>
+      </div>
+      <div class="hint">Valid colours: B=Blue, R=Red, Y=Yellow, P=Purple, G=Grey, Gn=Green, O=Orange — but spell out the full name here, e.g. Blue 2.</div>
+    </div>
+
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea class="form-control" id="am-notes" rows="2" placeholder="Where found, how to obtain it, special behaviour…"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn" onclick="closeAddMaterialModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCustomMaterial()">Save</button>
     </div>
   </div>
 </div>

@@ -127,22 +127,13 @@
 //     support alongside the Apple meta tags.
 //   - The icon design should fit the game's aesthetic (cave/stone motif).
 //
-// ── ITEM COLOUR / MATERIAL TYPE ────────────────────
-// TODO: Allow colours beyond Blue/Red/Yellow/Purple/Grey when adding a discovered item.
-//   - Some item cards are materials discovered during play (e.g. pigment stones, rare
-//     plants) and may be represented by a Green card or other non-crafting colours.
-//   - Add Green (and any other in-game colours) to PIP_COLORS / PIP_CSS.
-//   - Update the code parser (parseCodeString / PIP_ABBREV) to accept the new letter(s).
-//   - Update the hint text in the Add Recipe modal and Help modal to list the new colour.
-//   - Consider a visual indicator on recipe cards to distinguish "material" items
-//     from crafted items.
-//
 // ═══════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════
-const STORAGE_KEY = 'stonesaga_v2';
-const PIP_COLORS  = ['Blue','Red','Yellow','Purple','Grey'];
-const PIP_CSS     = {Blue:'blue',Red:'red',Yellow:'yellow',Purple:'purple',Grey:'grey'};
+const STORAGE_KEY   = 'stonesaga_v2';
+const DRIVE_SYNC_URL = 'https://script.google.com/macros/s/AKfycbyYhWRyscNnJnujY6e_TaDHKd23R--lPKkJ1VqdfWlc1uPOhGPeNFYB6WY3jzVtga6nzw/exec'; 
+const PIP_COLORS  = ['Blue','Red','Yellow','Purple','Grey','Green','Orange'];
+const PIP_CSS     = {Blue:'blue',Red:'red',Yellow:'yellow',Purple:'purple',Grey:'grey',Green:'green',Orange:'orange'};
 
 // Materials are loaded from materials.json at startup.
 // Edit that file to add new materials; the hardcoded list below is a fallback
@@ -182,6 +173,7 @@ const KNOWN_MATERIALS_BUILTIN = [
   {name:'Silk',               cat:'rare',    processed:'Silk (woven)',         image:IMG+'silk.webp',              marks:['Blue 1',  'Yellow 1', 'Red 3',    null      ]},
   {name:'Silk (woven)',       cat:'rare',    processed:null,                   image:IMG+'silk-woven.webp',        marks:['Blue 2',  'Red 5',    null,       null      ]},
 ];
+let BASE_MATERIALS  = KNOWN_MATERIALS_BUILTIN;
 let KNOWN_MATERIALS = KNOWN_MATERIALS_BUILTIN;
 let KM = Object.fromEntries(KNOWN_MATERIALS.map(m=>[m.name.toLowerCase(),m]));
 
@@ -197,16 +189,31 @@ function parseMaterialsJson(data){
     }));
 }
 
+function rebuildMaterials() {
+  const baseNames = new Set(BASE_MATERIALS.map(m => norm(m.name)));
+  KNOWN_MATERIALS = [
+    ...BASE_MATERIALS,
+    ...customMaterials
+      .filter(c => !baseNames.has(norm(c.name)))
+      .map(c => ({name:c.name, cat:c.cat||'unknown', processed:c.processed||null, image:c.image||null, marks:c.marks||null, notes:c.notes||null}))
+  ];
+  KM = Object.fromEntries(KNOWN_MATERIALS.map(m => [m.name.toLowerCase(), m]));
+}
+
 // A material can participate in crafting only if it has at least one non-null edge mark.
 function canCraft(name){ const m=KM[norm(name)]; return !!(m&&m.marks); }
 
 // ═══════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════
-let recipes   = [];   // [{id,name,codes:[{color,digits}],mat1Name,mat1Cat,mat2Name,mat2Cat,notes,addedAt}]
-let nullCodes = {};   // {"Blue 1234": {mat1,mat2}}
-let tokenData = {};   // {"wood (hardened)": [[leftColor,leftCount,rightColor,rightCount], ...]}
-let lastUpdated = null;
+let recipes         = [];   // [{id,name,codes:[{color,digits}],mat1Name,mat1Cat,mat2Name,mat2Cat,notes,addedAt}]
+let nullCodes       = {};   // {"Blue 1234": {mat1,mat2}}
+let tokenData       = {};   // {"wood (hardened)": [[leftColor,leftCount,rightColor,rightCount], ...]}
+let customMaterials = [];   // [{name, cat}] — item-card materials added at the table
+let lastUpdated     = null;
+let driveFileId     = null; // ID of this group's shared Drive file
+let driveLastSynced = null; // ISO timestamp of last successful Drive sync
+let drivePostImport = false; // when true, push to Drive after the import modal resolves
 // tokenData key is lowercase material name
 
 // ═══════════════════════════════════════════════════
@@ -335,6 +342,7 @@ function switchTab(id,btn){
   document.getElementById('tab-'+id).classList.add('active');
   btn.classList.add('active');
   if(id==='explorer') renderTokenNotice();
+  if(id==='materials') renderMaterials();
 }
 
 // ═══════════════════════════════════════════════════
@@ -622,7 +630,7 @@ function renderExplorer(){
 // ═══════════════════════════════════════════════════
 // CODE SHORTHAND PARSER
 // ═══════════════════════════════════════════════════
-const PIP_ABBREV = {B:'Blue',R:'Red',Y:'Yellow',P:'Purple',G:'Grey'};
+const PIP_ABBREV = {B:'Blue',R:'Red',Y:'Yellow',P:'Purple',G:'Grey',GN:'Green',O:'Orange'};
 
 // Parse a string like "B2132, R4210  Y0031" into [{color,digits}, ...]
 // Returns {codes, errors}
@@ -632,7 +640,7 @@ function parseCodeString(str) {
   // Split on commas and/or whitespace, filter empty
   const tokens = str.toUpperCase().split(/[\s,]+/).filter(Boolean);
   for (const tok of tokens) {
-    const m = tok.match(/^([BRYP G])(\d{4})$/);
+    const m = tok.match(/^(GN|[BRYPO])(\d{4})$/);
     if (!m) { errors.push(tok); continue; }
     const color = PIP_ABBREV[m[1]];
     if (!color) { errors.push(tok); continue; }
@@ -876,8 +884,8 @@ let acIdxMap={};
 
 function matImgHtml(name){
   const m=KM[norm(name)];
-  if(!m||!m.image) return '';
-  return `<img src="${esc(m.image)}" alt="" class="mat-ac-img" onerror="this.style.display='none'">`;
+  if(!m||!m.image) return '<span class="mat-ac-img mat-ac-img-placeholder"></span>';
+  return `<img src="${esc(m.image)}" alt="" class="mat-ac-img" onerror="this.classList.add('mat-ac-img-placeholder')">`;
 }
 
 function comboTokenImg(name, deg=0){
@@ -966,7 +974,7 @@ let pendingImport = null; // {recipes, nullCodes, meta} awaiting user choice
 
 function save() {
   lastUpdated = new Date().toISOString();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({recipes, nullCodes, tokenData, lastUpdated}));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({recipes, nullCodes, tokenData, customMaterials, lastUpdated, driveFileId, driveLastSynced}));
 }
 
 function fmtDate(iso) {
@@ -975,19 +983,23 @@ function fmtDate(iso) {
   return d.toLocaleString(undefined, {dateStyle:'medium', timeStyle:'short'});
 }
 
-function exportData() {
-  if (!recipes.length && !Object.keys(nullCodes).length) { alert('Nothing to export.'); return; }
-  const payload = {
+function buildExportPayload() {
+  return {
     app: 'Stonesaga Crafting Journal',
     version: 2,
     exportedAt: new Date().toISOString(),
     lastUpdated: lastUpdated || new Date().toISOString(),
     recipes,
     nullCodes,
+    customMaterials,
+    driveFileId,
   };
+}
+
+function exportData() {
+  if (!recipes.length && !Object.keys(nullCodes).length && !customMaterials.length) { alert('Nothing to export.'); return; }
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)], {type:'application/json'}));
-  // filename includes date + time to the minute
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(buildExportPayload(),null,2)], {type:'application/json'}));
   const ts = new Date().toISOString().replace('T',' ').slice(0,16).replace(/[: ]/g,'-');
   a.download = `stonesaga-${ts}.json`;
   a.click();
@@ -1072,7 +1084,7 @@ function importData(event) {
       const incoming = d.recipes || (Array.isArray(d) ? d : null);
       if (!incoming) { alert('Unrecognised file format.'); return; }
       const inNull = d.nullCodes || {};
-      pendingImport = { recipes: incoming, nullCodes: inNull, meta: d };
+      pendingImport = { recipes: incoming, nullCodes: inNull, customMaterials: d.customMaterials || [], driveFileId: d.driveFileId || null, meta: d };
 
       const fileUpdated = d.lastUpdated ? fmtDate(d.lastUpdated) : (d.exportedAt ? fmtDate(d.exportedAt) : 'unknown');
       const nullCount   = Object.keys(inNull).length;
@@ -1094,20 +1106,29 @@ function importData(event) {
 
 function doImport(mode) {
   if (!pendingImport) return;
-  const { recipes: incoming, nullCodes: inNull } = pendingImport;
+  const { recipes: incoming, nullCodes: inNull, customMaterials: inMats, driveFileId: inDriveId } = pendingImport;
   if (mode === 'merge') {
     const map = Object.fromEntries(recipes.map(r => [r.id, r]));
     incoming.forEach(r => { map[r.id] = r; });
     recipes = Object.values(map);
     Object.assign(nullCodes, inNull);
+    const matNames = new Set(customMaterials.map(m => norm(m.name)));
+    inMats.forEach(m => { if (!matNames.has(norm(m.name))) customMaterials.push(m); });
   } else {
-    recipes  = incoming;
-    nullCodes = inNull;
+    recipes         = incoming;
+    nullCodes       = inNull;
+    customMaterials = inMats;
   }
+  if (!driveFileId && inDriveId) driveFileId = inDriveId;
   pendingImport = null;
+  rebuildMaterials();
   save(); renderJournal();
   closeImportModal();
   if (document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+  if (drivePostImport) {
+    drivePostImport = false;
+    _pushToDrive().catch(err => alert(`Push to Drive failed: ${err.message}`));
+  }
 }
 
 function closeImportModal() {
@@ -1162,20 +1183,269 @@ function load() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const d = JSON.parse(raw);
-      recipes     = d.recipes     || [];
-      nullCodes   = d.nullCodes   || {};
-      tokenData   = d.tokenData   || {};
-      lastUpdated = d.lastUpdated || null;
+      recipes         = d.recipes         || [];
+      nullCodes       = d.nullCodes       || {};
+      tokenData       = d.tokenData       || {};
+      customMaterials = d.customMaterials || [];
+      lastUpdated     = d.lastUpdated     || null;
+      driveFileId     = d.driveFileId     || null;
+      driveLastSynced = d.driveLastSynced || null;
     }
   } catch { /* corrupted storage — start fresh */ }
+  rebuildMaterials();
   seedTokenDataFromMarks();
+}
+
+// ═══════════════════════════════════════════════════
+// CUSTOM MATERIALS
+// ═══════════════════════════════════════════════════
+let editingMaterialName = null;
+
+// Normalise a mark string "Blue 2" — returns the canonical string, null (blank/ok), or false (invalid).
+function normalizeMark(v) {
+  if (!v) return null;
+  const t = v.trim(); if (!t) return null;
+  const i = t.indexOf(' ');
+  if (i < 1) return false;
+  const color = t.slice(0, i).charAt(0).toUpperCase() + t.slice(1, i).toLowerCase();
+  const count = parseInt(t.slice(i + 1));
+  if (!PIP_COLORS.includes(color) || isNaN(count) || count < 1 || count > 6) return false;
+  return `${color} ${count}`;
+}
+
+function openAddMaterialModal(nameToEdit) {
+  editingMaterialName = nameToEdit || null;
+  document.getElementById('am-title').textContent = nameToEdit ? 'Edit Material' : 'Add Material';
+
+  // Populate category datalist from all known categories
+  const cats = [...new Set([...KNOWN_MATERIALS.map(m => m.cat), 'animal','plant','mineral','rare','unknown'])].filter(Boolean).sort();
+  document.getElementById('am-cat-list').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
+
+  const m = nameToEdit ? KM[norm(nameToEdit)] : null;
+  document.getElementById('am-name').value      = m?.name      || '';
+  document.getElementById('am-cat').value       = m?.cat       || 'unknown';
+  document.getElementById('am-processed').value = m?.processed || '';
+  document.getElementById('am-image').value     = m?.image     || '';
+  document.getElementById('am-mark-left').value   = m?.marks?.[0] || '';
+  document.getElementById('am-mark-right').value  = m?.marks?.[1] || '';
+  document.getElementById('am-mark-top').value    = m?.marks?.[2] || '';
+  document.getElementById('am-mark-bottom').value = m?.marks?.[3] || '';
+  document.getElementById('am-notes').value     = m?.notes     || '';
+
+  document.getElementById('am-name').readOnly = !!(nameToEdit && !customMaterials.some(c => norm(c.name) === norm(nameToEdit)));
+  document.getElementById('add-material-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById(nameToEdit ? 'am-cat' : 'am-name').focus(), 50);
+}
+
+function closeAddMaterialModal() { document.getElementById('add-material-overlay').classList.add('hidden'); }
+
+function editCustomMaterial(name) { openAddMaterialModal(name); }
+
+function deleteCustomMaterial(name) {
+  if (!confirm(`Delete "${name}"?`)) return;
+  customMaterials = customMaterials.filter(m => norm(m.name) !== norm(name));
+  rebuildMaterials(); save(); renderMaterials();
+}
+
+function saveCustomMaterial() {
+  const name = document.getElementById('am-name').value.trim();
+  if (!name) { alert('Name is required.'); return; }
+
+  // Validate marks
+  const markIds = ['am-mark-left','am-mark-right','am-mark-top','am-mark-bottom'];
+  const marks = [];
+  for (const id of markIds) {
+    const normalized = normalizeMark(document.getElementById(id).value);
+    if (normalized === false) {
+      alert(`Invalid mark in "${id.replace('am-mark-','')}": use "Colour N", e.g. Blue 2.\nValid colours: ${PIP_COLORS.join(', ')}.`);
+      return;
+    }
+    marks.push(normalized);
+  }
+  const hasMarks = marks.some(m => m !== null);
+
+  const entry = {
+    name,
+    cat:       (document.getElementById('am-cat').value.trim()       || 'unknown'),
+    processed: (document.getElementById('am-processed').value.trim() || null),
+    image:     (document.getElementById('am-image').value.trim()     || null),
+    marks:     hasMarks ? marks : null,
+    notes:     (document.getElementById('am-notes').value.trim()     || null),
+  };
+
+  if (editingMaterialName) {
+    const isBuiltin = !customMaterials.some(c => norm(c.name) === norm(editingMaterialName));
+    if (isBuiltin) { alert('Built-in materials cannot be edited.'); return; }
+    const idx = customMaterials.findIndex(m => norm(m.name) === norm(editingMaterialName));
+    if (norm(name) !== norm(editingMaterialName) && KM[norm(name)]) {
+      alert(`"${name}" is already a known material.`); return;
+    }
+    if (idx !== -1) customMaterials[idx] = entry; else customMaterials.push(entry);
+  } else {
+    if (KM[norm(name)]) { alert(`"${name}" is already a known material.`); return; }
+    customMaterials.push(entry);
+  }
+
+  rebuildMaterials(); save(); closeAddMaterialModal(); renderMaterials();
+}
+
+function renderMaterials() {
+  const q          = (document.getElementById('mat-search')?.value     || '').toLowerCase();
+  const catFilter  =  document.getElementById('mat-cat-filter')?.value || '';
+  const customNames = new Set(customMaterials.map(m => norm(m.name)));
+
+  // Refresh category filter options
+  const catFilterEl = document.getElementById('mat-cat-filter');
+  if (catFilterEl) {
+    const cats = [...new Set(KNOWN_MATERIALS.map(m => m.cat))].filter(Boolean).sort();
+    catFilterEl.innerHTML = '<option value="">All categories</option>' +
+      cats.map(c => `<option value="${esc(c)}"${c === catFilter ? ' selected' : ''}>${esc(titleCase(c))}</option>`).join('');
+  }
+
+  const list = KNOWN_MATERIALS
+    .filter(m => (!q || m.name.toLowerCase().includes(q)) && (!catFilter || m.cat === catFilter))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const grid = document.getElementById('materials-grid');
+  if (!grid) return;
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="glyph">◈</div><h2>No materials found</h2><p>Adjust your search or add a new material.</p></div>`;
+    return;
+  }
+
+  const edgeLabels = ['L','R','T','B'];
+  grid.innerHTML = list.map(m => {
+    const isCustom = customNames.has(norm(m.name));
+    const markHtml = m.marks
+      ? m.marks.map((mark, i) => {
+          if (!mark) return '';
+          const pm = parseMark(mark); if (!pm) return '';
+          return `<span class="mat-mark-chip">${pipHtml(pm.color)} ${edgeLabels[i]}: ${pm.count}</span>`;
+        }).join('')
+      : '';
+    return `<div class="material-card${isCustom ? ' material-card-custom' : ''}">
+      <div class="material-card-img-wrap">
+        ${m.image
+          ? `<img src="${esc(m.image)}" alt="" class="material-card-img" onerror="this.style.display='none'">`
+          : `<div class="material-card-img-placeholder"></div>`}
+      </div>
+      <div class="material-card-body">
+        <div class="material-card-name-row">
+          <span class="material-tag ${m.cat||'unknown'}">${esc(m.name)}</span>
+          ${isCustom ? '<span class="custom-badge">custom</span>' : ''}
+        </div>
+        ${m.processed ? `<div class="material-card-detail">→ ${esc(m.processed)}</div>` : ''}
+        ${markHtml    ? `<div class="material-card-marks">${markHtml}</div>` : ''}
+        ${m.notes     ? `<div class="material-card-notes">${esc(m.notes)}</div>` : ''}
+        ${isCustom ? `<div class="card-actions">
+          <button class="btn btn-sm" onclick="editCustomMaterial('${esc(m.name)}')">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteCustomMaterial('${esc(m.name)}')">Delete</button>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════
+// DRIVE SYNC
+// ═══════════════════════════════════════════════════
+function openDriveModal()  { renderDriveModal(); document.getElementById('drive-overlay').classList.remove('hidden'); }
+function closeDriveModal() { document.getElementById('drive-overlay').classList.add('hidden'); }
+
+function renderDriveModal() {
+  const statusEl  = document.getElementById('drive-modal-status');
+  const actionsEl = document.getElementById('drive-modal-actions');
+
+  if (!DRIVE_SYNC_URL) {
+    statusEl.innerHTML  = '<p class="drive-notice">Drive sync is not yet configured — set <code>DRIVE_SYNC_URL</code> in app.js after deploying drive-sync.gs.</p>';
+    actionsEl.innerHTML = '';
+    return;
+  }
+
+  if (!driveFileId) {
+    statusEl.innerHTML  = '<p>No group file yet. Create one to share your journal with the table — everyone who imports your JSON will connect to it automatically.</p>';
+    actionsEl.innerHTML = '<button class="btn btn-primary" id="drive-create-btn" onclick="createDriveFile()">Create group file</button>';
+    return;
+  }
+
+  const driveLink = `https://drive.google.com/file/d/${encodeURIComponent(driveFileId)}/view?usp=sharing`;
+  statusEl.innerHTML =
+    `<div class="drive-file-row">Group file: <a href="${driveLink}" target="_blank" rel="noopener" class="drive-file-link">View in Drive ↗</a></div>` +
+    `<div class="drive-synced">Last synced: ${esc(driveLastSynced ? fmtDate(driveLastSynced) : 'never')}</div>`;
+  actionsEl.innerHTML = '<button class="btn btn-primary" id="drive-sync-btn" onclick="syncWithDrive()">Sync</button>';
+}
+
+async function createDriveFile() {
+  const btn = document.getElementById('drive-create-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
+  try {
+    const res = await fetch(DRIVE_SYNC_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'create', data: buildExportPayload() }),
+    });
+    const d = await res.json();
+    if (d.error) throw new Error(d.error);
+    driveFileId = d.fileId;
+    await _pushToDrive();
+    renderDriveModal();
+  } catch(err) {
+    alert(`Could not create Drive file: ${err.message}`);
+    renderDriveModal();
+  }
+}
+
+async function _pushToDrive() {
+  const res = await fetch(DRIVE_SYNC_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'push', fileId: driveFileId, data: buildExportPayload() }),
+  });
+  const d = await res.json();
+  if (d.error) throw new Error(d.error);
+  driveLastSynced = new Date().toISOString();
+  save();
+}
+
+async function syncWithDrive() {
+  if (!DRIVE_SYNC_URL || !driveFileId) return;
+  const btn = document.getElementById('drive-sync-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Syncing…'; }
+  try {
+    const res = await fetch(`${DRIVE_SYNC_URL}?fileId=${encodeURIComponent(driveFileId)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const d = await res.json();
+    if (d.error) throw new Error(d.error);
+    drivePostImport = true;
+    closeDriveModal();
+    _loadDriveImport(d);
+  } catch(err) {
+    drivePostImport = false;
+    if (btn) { btn.disabled = false; btn.textContent = 'Sync'; }
+    alert(`Sync failed: ${err.message}`);
+  }
+}
+
+function _loadDriveImport(d) {
+  const incoming = d.recipes || (Array.isArray(d) ? d : null);
+  if (!incoming) { drivePostImport = false; alert('Unrecognised format received from Drive.'); return; }
+  const inNull = d.nullCodes || {};
+  pendingImport = { recipes: incoming, nullCodes: inNull, customMaterials: d.customMaterials || [], driveFileId: d.driveFileId || null, meta: d };
+
+  const fileUpdated = d.lastUpdated ? fmtDate(d.lastUpdated) : (d.exportedAt ? fmtDate(d.exportedAt) : 'unknown');
+  document.getElementById('im-summary').innerHTML =
+    `<strong>Source:</strong> Drive<br>` +
+    `<strong>Last updated:</strong> ${esc(fileUpdated)}<br>` +
+    `<strong>Recipes:</strong> ${incoming.length} &nbsp;·&nbsp; <strong>Dead-end codes:</strong> ${Object.keys(inNull).length}`;
+  document.getElementById('im-current').innerHTML =
+    `Your current data: ${recipes.length} recipe(s), ${Object.keys(nullCodes).length} dead-end code(s) — last updated ${esc(fmtDate(lastUpdated))}`;
+  renderConflicts(detectImportConflicts(incoming, inNull));
+  document.getElementById('import-overlay').classList.remove('hidden');
 }
 
 // ═══════════════════════════════════════════════════
 // KEYBOARD
 // ═══════════════════════════════════════════════════
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeModal();closeStatusModal();closeImportModal();closePick();closeHelp();}
+  if(e.key==='Escape'){closeModal();closeStatusModal();closeImportModal();closePick();closeHelp();closeAddMaterialModal();closeDriveModal();}
   if(e.key==='n'&&!e.target.matches('input,textarea,select')) openModal();
 });
 
@@ -1187,8 +1457,7 @@ document.addEventListener('keydown',e=>{
     const res=await fetch('materials.json');
     if(res.ok){
       const data=await res.json();
-      KNOWN_MATERIALS=parseMaterialsJson(data);
-      KM=Object.fromEntries(KNOWN_MATERIALS.map(m=>[m.name.toLowerCase(),m]));
+      BASE_MATERIALS=parseMaterialsJson(data);
     }
   }catch(e){ /* fetch unavailable (file://); built-in list remains active */ }
   load();
