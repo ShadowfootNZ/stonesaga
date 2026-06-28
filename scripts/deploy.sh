@@ -20,6 +20,11 @@ sed "s/STAMP/$VERSION/g" index.html > "$STAGE/index.html"
 cp styles.css app.js analytics.js materials.json catalogue.json "$STAGE/"
 cp -r assets/ "$STAGE/assets/"
 
+# Set web-safe permissions — mktemp creates 700 dirs which Apache cannot read,
+# causing a 403 when tar extracts and overwrites the web root's permissions
+find "$STAGE" -type d -exec chmod 755 {} \;
+find "$STAGE" -type f -exec chmod 644 {} \;
+
 # Upload
 tar -czf - -C "$STAGE" . \
   | $SSH "$SSH_USER@$SSH_HOST" "tar -xzf - -C '$REMOTE_PATH'"
