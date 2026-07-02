@@ -1,8 +1,5 @@
 // ═══════════════════════════════════════════════════
-// TODO — JOURNAL TRANSFORMATION
-// Convert this app from a crafting helper into a full campaign journal.
-// Each section below becomes its own tab (or collapsible panel) alongside
-// the existing Crafting / Recipes tabs.
+// TODO — JOURNAL TRANSFORMATION (remaining sections)
 //
 // ── VALLEY MAP ─────────────────────────────────────
 // TODO: Add a Valley Map section.
@@ -10,77 +7,7 @@
 //   - Allow players to label hexes (terrain type, name, notes).
 //   - Support uploading a scanned map image as a background layer.
 //   - Store hex annotations in the save JSON under `valleyMap`.
-//
-// ── CULTURE ────────────────────────────────────────
-// TODO: Add a Culture section with fields for:
-//   - Tribe name
-//   - Structures (list, each with name + notes)
-//   - Mantle Powers (list with name + description)
-//   - Knowledge Cards (list with card ID + name)
-//   - Taboos (list of text entries)
-//   - Pigments (list of discovered pigment names/colours)
-//   Store in `culture` object in the save JSON.
-//
-// ── BEHEMOTHS ──────────────────────────────────────
-// TODO: Add a Behemoths section — a list of behemoth entries, each with:
-//   - Name
-//   - Lair hex (cross-reference with Valley Map hex IDs)
-//   - Revealed secrets (ordered list that unlocks progressively)
-//   - Demeanor (text, e.g. "Aggressive", "Dormant")
-//   Store as `behemoths: []` in the save JSON.
-//
-// ── CHALLENGE RECORD ───────────────────────────────
-// TODO: Add a Challenge Record section grouped by Epoch.
-//   - Each epoch contains a list of challenges: name, card ID, outcome (won/lost/fled), notes.
-//   - Display as collapsible epoch groups, newest epoch first.
-//   Store as `challengeRecord: { epoch1: [...], epoch2: [...], ... }` in the save JSON.
-//
-// ── LOOMING CHALLENGES ─────────────────────────────
-// TODO: Add a Looming Challenges section — an ordered list of upcoming challenges.
-//   - Each entry: name, card ID, notes, and a "prepare by" epoch marker.
-//   - Allow re-ordering (drag-and-drop or up/down buttons).
-//   Store as `loomingChallenges: []` in the save JSON.
-//
-// ── INVESTIGATIONS ─────────────────────────────────
-// TODO: Add an Investigations section — a list of investigation entries, each with:
-//   - Omen (the trigger/sign)
-//   - Investigation card ID
-//   - Notes (findings, progress)
-//   Store as `investigations: []` in the save JSON.
-//
-// ── PROVISIONAL TEXT (applies to Crafting, Investigations, Behemoths, Challenges) ──
-// TODO: Support provisional entries where the card ID and associated text come from an
-//   uncertified source — e.g. community data files, old transcriptions, or inferences
-//   rather than reading directly off the physical card.
-//
-//   Concrete example: crafting-blue.txt (Blue crafting codes, CSV format):
-//     Code ; Flavor Text ; Game Text ; Item Name
-//     1111 ; "You've made rope!…" ; "…gain the Rope item card (IT29)…" ; Rope
-//   This file is ~2 years old and may not match the current edition. Codes are
-//   reliable (you already rolled them at the table), but item names, card IDs (IT##),
-//   flavor text, and game text are spoilers from an unverified external source.
-//
-//   Reveal order when provisional:
-//     1. Crafting code (always visible — the player already knows this).
-//     2. Item card ID (IT##) — show this next so the group can locate the physical card.
-//     3. Item name, flavor text, game text — hidden behind a "Reveal" toggle until
-//        the group confirms the physical card matches the ID.
-//
-//   Implementation:
-//   - Add `provisional: true` and optionally `provisionalSource: string` to any
-//     recipe or entry populated from unverified external data.
-//   - Render provisional recipes with an "Unverified source" badge in the recipe card.
-//   - Spoiler fields (name, notes, flavor) are collapsed by default; a "Reveal spoiler"
-//     button expands them.
-//   - A "Confirm" button (or edit + save) clears the provisional flag once someone
-//     at the table has verified the content against the physical card.
-//
-// TODO: Add an importer for the crafting-blue.txt format (and equivalent files for
-//   other pip colours). Parse the semicolon-delimited rows, extract the card ID from
-//   the Game Text (e.g. "IT29" from "search the Item Card deck facedown for IT29"),
-//   and import each row as a provisional recipe. This lets the group pre-populate
-//   known codes without manually entering them, while the provisional flag ensures
-//   no spoilers are shown until physically verified.
+//   - Behemoth `lairHex` fields become cross-links to hex IDs once this exists.
 //
 // ── CAVE WALL ──────────────────────────────────────
 // TODO: Add a Cave Wall section for pictographic records.
@@ -95,28 +22,9 @@
 //     side-channel image store (IndexedDB is better than localStorage for blobs).
 //   Store as `caveWall: [{ name, svgData|imageDataUrl, addedAt }]` in the save JSON.
 //
-// ── NOTES ──────────────────────────────────────────
-// TODO: Add a free-form Notes section.
-//   - Simple textarea (or lightweight Markdown editor).
-//   - Optionally support multiple named note pages.
-//   Store as `notes: string` (or `notes: [{ title, body }]`) in the save JSON.
-//
-// ── GOOGLE DRIVE SYNC ──────────────────────────────
-// TODO: Add Google Drive URL-based JSON sync so everyone at the table can share state.
-//   - Store a Google Drive file sharing URL inside the JSON itself (field: `driveUrl`).
-//     Once someone has the JSON, the URL travels with it — no separate setup needed.
-//   - The shared file must be a publicly editable Google Drive file (owner sets
-//     "Anyone with the link can edit"), which exposes a direct download URL.
-//   - Add "Sync from Drive" and "Push to Drive" buttons (or auto-sync on every save).
-//   - Use the Google Drive API (or the public fetch-by-file-ID URL trick) to GET the
-//     latest JSON, run the existing merge logic, then PUT the merged result back.
-//   - Note: direct Drive writes from a plain HTML page require either the Drive API
-//     with OAuth, or a small proxy/Apps Script Web App the group controls.
-//   - Consider a "Last synced" timestamp and conflict warning if both local and Drive
-//     were updated since the last sync.
-//
 // ── APPLE HOME SCREEN ICON ─────────────────────────
-// TODO: Add an Apple touch icon so the app looks polished when saved to an iOS
+// TODO (ON HOLD — icon artwork still to be designed):
+//   Add an Apple touch icon so the app looks polished when saved to an iOS
 //   home screen (the primary play surface — iPad with Apple Pencil).
 //   - Create a 180×180px PNG icon (apple-touch-icon.png) and place it in the root.
 //   - Add to index.html <head>:
@@ -198,6 +106,7 @@ function rebuildMaterials() {
       .map(c => ({name:c.name, cat:c.cat||'unknown', processed:c.processed||null, image:c.image||null, marks:c.marks||null, notes:c.notes||null}))
   ];
   KM = Object.fromEntries(KNOWN_MATERIALS.map(m => [m.name.toLowerCase(), m]));
+  populateExplorerSelects();
 }
 
 // A material can participate in crafting only if it has at least one non-null edge mark.
@@ -216,6 +125,20 @@ let driveLastSynced = null; // ISO timestamp of last successful Drive sync
 let drivePostImport = false; // when true, push to Drive after the import modal resolves
 // tokenData key is lowercase material name
 
+// Journal sections — persistence is wired here; each section's UI arrives in its own phase.
+// Every list entry carries {id, updatedAt} so imports/Drive sync can merge (union by id, newer wins).
+let culture           = emptyCulture();
+let behemoths         = [];   // [{id,name,lairHex,demeanor,secrets:[text],notes,updatedAt}]
+let challengeRecord   = [];   // [{id,epoch,name,cardId,outcome,notes,updatedAt}] — flat list, grouped by epoch at render time
+let loomingChallenges = [];   // [{id,name,cardId,prepareByEpoch,notes,order,updatedAt}]
+let investigations    = [];   // [{id,omen,cardId,notes,updatedAt}]
+let notePages         = [];   // [{id,title,body,updatedAt}]
+let provisionalCodes  = {};   // {"Blue 1111": {cardId,name,flavor,gameText,source,updatedAt}} — unverified external data
+
+function emptyCulture(){
+  return {tribeName:'', updatedAt:null, structures:[], mantlePowers:[], knowledgeCards:[], taboos:[], pigments:[]};
+}
+
 // ═══════════════════════════════════════════════════
 // TOKEN DATA
 // ═══════════════════════════════════════════════════
@@ -233,6 +156,7 @@ function importTokenData(event) {
       for (const [k,v] of Object.entries(raw)) normalised[k.toLowerCase()] = v;
       Object.assign(tokenData, normalised);
       save();
+      populateExplorerSelects(); // canBeLeft may change with new pip data
       renderTokenNotice();
       alert(`Token data loaded for: ${Object.keys(normalised).join(', ')}`);
     } catch { alert('Could not parse token data JSON.'); }
@@ -243,6 +167,90 @@ function importTokenData(event) {
 function triggerImportTokens() {
   document.getElementById('import-tokens-file').value='';
   document.getElementById('import-tokens-file').click();
+}
+
+// ═══════════════════════════════════════════════════
+// PROVISIONAL CODES (unverified external data)
+// ═══════════════════════════════════════════════════
+// Imported from community CSV files (Code;Flavor Text;Game Text;Item Name).
+// The codes themselves are trusted, but names / card IDs / text are spoilers
+// from an unverified source: the card ID is shown so the group can locate the
+// physical card, everything else hides behind a Reveal toggle. Saving a recipe
+// with a matching code clears the provisional entry (it's now verified).
+
+function triggerImportCodes() {
+  document.getElementById('import-codes-file').value='';
+  document.getElementById('import-codes-file').click();
+}
+
+function colorFromFilename(name) {
+  const m = name.match(/blue|red|yellow|purple|gr[ea]y|green|orange|silver/i);
+  if (!m) return null;
+  const s = m[0].toLowerCase();
+  return s === 'gray' ? 'Grey' : titleCase(s);
+}
+
+async function importCodesCsv(event) {
+  const files = [...event.target.files]; if (!files.length) return;
+  const summary = [];
+  for (const file of files) {
+    let color = colorFromFilename(file.name);
+    if (!color) {
+      const ans = prompt(`Which pip colour is "${file.name}" for?\n(${PIP_COLORS.join(', ')})`);
+      color = ans && PIP_COLORS.find(c => norm(c) === norm(ans));
+      if (!color) { summary.push(`${file.name} — skipped (no pip colour)`); continue; }
+    }
+    try {
+      summary.push(`${file.name} — ${parseCodesCsv(await file.text(), color, file.name)}`);
+    } catch { summary.push(`${file.name} — could not read file`); }
+  }
+  save();
+  if (document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+  alert(`Provisional codes imported:\n${summary.join('\n')}`);
+}
+
+// Parse one CSV (rows: Code;Flavor Text;Game Text;Item Name) into provisionalCodes.
+// Item name "None" marks a community-reported dead-end (nothing crafted).
+function parseCodesCsv(text, color, source) {
+  let added = 0, updated = 0, bad = 0, deadEnds = 0;
+  const strip = s => s.trim().replace(/^"(.*)"$/, '$1');
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    const parts = line.split(';');
+    const digits = parts[0].trim();
+    if (!/^\d{4}$/.test(digits)) { if (!/^code$/i.test(digits)) bad++; continue; } // header row skipped silently
+    if (parts.length < 4) { bad++; continue; }
+    // Fixed outer fields; any embedded semicolons belong to the game text
+    const flavor   = strip(parts[1]);
+    const gameText = strip(parts.slice(2, -1).join(';'));
+    const name     = strip(parts[parts.length-1]);
+    const cardId   = (gameText.match(/\bIT\d+\b/i) || [null])[0];
+    const isNothing = /^none$/i.test(name);
+    const k = codeKey(color, digits);
+    const prev = provisionalCodes[k];
+    if (isNothing && !prev) deadEnds++;
+    provisionalCodes[k] = { cardId: cardId ? cardId.toUpperCase() : null, name: isNothing ? null : name,
+                            isNothing, flavor, gameText, source,
+                            revealed: prev?.revealed || false, updatedAt: Date.now() };
+    prev ? updated++ : added++;
+  }
+  return `${added} added (${added-deadEnds} items, ${deadEnds} dead-ends), ${updated} updated${bad ? `, ${bad} unparseable row(s)` : ''} (${color})`;
+}
+
+function revealProvisional(key) {
+  const p = provisionalCodes[key]; if (!p) return;
+  p.revealed = true; p.updatedAt = Date.now();
+  save(); renderExplorer();
+}
+
+function confirmProvisional(key, mat1, mat2) {
+  const p = provisionalCodes[key]; if (!p) return;
+  const [color, digits] = key.split(' ');
+  openModalForPair(mat1, mat2, color, digits, {
+    name:   p.name   || '',
+    cardId: p.cardId || '',
+    notes:  p.gameText ? `[${p.source || 'unverified import'}] ${p.gameText}` : '',
+  });
 }
 
 function renderTokenNotice() {
@@ -298,6 +306,7 @@ function computeCodes(matA, matB) {
 // ═══════════════════════════════════════════════════
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function norm(s){return s.trim().toLowerCase();}
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 function codeKey(color,digits){return `${color} ${digits}`;}
 function titleCase(s){return s.replace(/\b\w/g,c=>c.toUpperCase());}
 
@@ -343,6 +352,8 @@ function switchTab(id,btn){
   btn.classList.add('active');
   if(id==='explorer') renderTokenNotice();
   if(id==='materials') renderMaterials();
+  const journalTabs={culture:renderCulture,behemoths:renderBehemoths,challenges:renderChallenges,looming:renderLooming,investigations:renderInvestigations,notes:renderNotes};
+  if(journalTabs[id]) journalTabs[id]();
 }
 
 // ═══════════════════════════════════════════════════
@@ -360,12 +371,13 @@ let matFilterTags=[];
 
 function renderJournal(){
   updateStats();
-  document.getElementById('clear-btn').style.display=recipes.length?'block':'none';
+  const hasFilter=document.getElementById('search').value.trim()||matFilterTags.length;
+  document.getElementById('clear-btn').style.display=hasFilter?'block':'none';
   const q=document.getElementById('search').value.toLowerCase();
   const andM=document.getElementById('filter-mode-and').checked;
   const list=recipes.filter(r=>{
     if(matFilterTags.length){
-      const mats=[norm(r.mat1Name||''),norm(r.mat2Name||'')];
+      const mats=pairsOf(r).flatMap(p=>[norm(p.mat1Name||''),norm(p.mat2Name||'')]);
       // Expand each filter tag to include its processed variant:
       // filtering by "Wood" also matches recipes using "Wood (hardened)"
       const tagMatches=t=>withVariant(t).map(norm).some(v=>mats.includes(v));
@@ -374,7 +386,8 @@ function renderJournal(){
     }
     if(q){
       const codes=(r.codes||[]).map(c=>`${c.color} ${c.digits}`).join(' ');
-      if(![r.name,r.id,codes,r.mat1Name,r.mat2Name,r.notes].join(' ').toLowerCase().includes(q)) return false;
+      const matNames=pairsOf(r).flatMap(p=>[p.mat1Name,p.mat2Name]).join(' ');
+      if(![r.name,r.id,codes,matNames,r.notes].join(' ').toLowerCase().includes(q)) return false;
     }
     return true;
   }).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
@@ -396,6 +409,13 @@ function renderJournal(){
         <span style="color:var(--flint)">+</span>
         <span class="material-tag ${r.mat2Cat||'unknown'}">${esc(r.mat2Name||'?')}</span>
       </div>
+      ${(r.altPairs||[]).map((p,i)=>`<div class="recipe-materials recipe-materials-alt">
+        <span class="alt-pair-label">${p.inferred?'inferred':'also'}</span>
+        <span class="material-tag ${p.mat1Cat||'unknown'}">${esc(p.mat1Name||'?')}</span>
+        <span style="color:var(--flint)">+</span>
+        <span class="material-tag ${p.mat2Cat||'unknown'}">${esc(p.mat2Name||'?')}</span>
+        <button class="alt-pair-remove" onclick="removeAltPair('${r.id}',${i})" title="Remove this combination">×</button>
+      </div>`).join('')}
       <div class="code-chips">${chips||'<span style="color:var(--flint);font-size:.8rem">No codes recorded</span>'}</div>
       ${r.notes?`<div class="recipe-notes">${esc(r.notes)}</div>`:''}
       <div class="card-actions">
@@ -450,58 +470,62 @@ function clearExplorer(){
   document.getElementById('explorer-output').innerHTML='';
 }
 
-let exAcIdxMap={};
-function exAcShow(inputId,acId){
-  const q=document.getElementById(inputId).value;
-  showAcDropdown(acId,q,[],n=>`pickExMat('${esc(n)}','${inputId}','${acId}')`,canCraft);
-  exAcIdxMap[acId]=-1;
+// A material can be Material A (left token) only if some orientation has a non-null
+// inner (right) edge: the code colour comes from the leftmost column and inner edges
+// must share a pip type, so a null can never sit on the inside. Materials like
+// Feather or Tooth (drilled) only ever expose a null inner edge — right slot only.
+function canBeLeft(name){
+  const key=norm(name);
+  const orients=tokenData[key]||marksToOrientations(KM[key]?.marks);
+  return (orients||[]).some(o=>o[2]!=null);
 }
-function exAcKey(e,inputId,acId){
-  acKeyNav(e,acId,idx=>{
-    const items=document.querySelectorAll(`#${acId} .mat-autocomplete-item`);
-    if(idx>=0&&items[idx]){
-      pickExMat(items[idx].dataset.name,inputId,acId);
-    } else {
-      // Enter with no dropdown selection — use typed value as-is and run search
-      hideAc(acId);
-      if(e.key==='Enter') renderExplorer();
-    }
-  },exAcIdxMap,acId);
-}
-function pickExMat(name,inputId,acId){
-  document.getElementById(inputId).value=name;
-  hideAc(acId);
-  // Move focus to Material B if we just filled Material A, otherwise run search
-  if(inputId==='ex-mat1'){
-    document.getElementById('ex-mat2').focus();
-  } else {
-    renderExplorer();
-  }
+
+// Fill both Explorer selects with craftable materials, grouped by category.
+// Material A additionally requires canBeLeft. Called from rebuildMaterials()
+// so custom materials appear automatically.
+function populateExplorerSelects(){
+  const s1=document.getElementById('ex-mat1'), s2=document.getElementById('ex-mat2');
+  if(!s1||!s2) return;
+  const optsFor=names=>{
+    const groups={};
+    for(const n of names)(groups[KM[norm(n)]?.cat||'unknown']??=[]).push(n);
+    const catOrder=['animal','mineral','plant','rare'];
+    const cats=[...catOrder.filter(c=>groups[c]),...Object.keys(groups).filter(c=>!catOrder.includes(c)).sort()];
+    return cats.map(c=>
+      `<optgroup label="${esc(titleCase(c))}">${groups[c].sort((a,b)=>a.localeCompare(b)).map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')}</optgroup>`
+    ).join('');
+  };
+  const craftable=KNOWN_MATERIALS.filter(m=>canCraft(m.name)).map(m=>m.name);
+  const v1=s1.value, v2=s2.value; // keep current picks if still valid
+  s1.innerHTML='<option value="">— choose material —</option>'+optsFor(craftable.filter(canBeLeft));
+  s2.innerHTML='<option value="">All materials</option>'+optsFor(craftable);
+  s1.value=v1; s2.value=v2;
 }
 
 function renderExplorer(){
   const mat1=document.getElementById('ex-mat1').value.trim();
   const mat2=document.getElementById('ex-mat2').value.trim();
   const out=document.getElementById('explorer-output');
-  if(!mat1){out.innerHTML='<p style="color:var(--flint);font-style:italic">Enter at least Material A.</p>';return;}
+  if(!mat1){out.innerHTML='<p style="color:var(--flint);font-style:italic">Choose Material A to see combinations.</p>';return;}
 
   // Expand each input to include unprocessed/processed variant,
   // then filter to only materials that actually have pip marks.
-  const aSet=[...new Set(withVariant(mat1).filter(canCraft))];
+  // Material A must also be able to sit on the left (non-null inner edge).
+  const aSet=[...new Set(withVariant(mat1).filter(n=>canCraft(n)&&canBeLeft(n)))];
   if(!aSet.length){
     out.innerHTML='<p style="color:var(--flint);font-style:italic">That material has no pip marks and cannot be used in crafting combinations.</p>';
     return;
   }
   const bSet=mat2
     ? [...new Set(withVariant(mat2).filter(canCraft))]
-    : allMatNames().filter(n=>!aSet.map(norm).includes(norm(n))&&canCraft(n));
+    : allMatNames().filter(canCraft);
 
-  // Build ordered pairs: (A,B) and (B,A) if A≠B
+  // Build ordered pairs, including a material with itself — the table can hold
+  // two tokens of the same material, and independent rotations yield valid codes.
   const seen=new Set();
   const pairs=[];
   for(const a of aSet){
     for(const b of bSet){
-      if(norm(a)===norm(b)) continue;
       const fwd=`${norm(a)}|${norm(b)}`;
       if(!seen.has(fwd)){seen.add(fwd);pairs.push([a,b]);}
     }
@@ -509,21 +533,21 @@ function renderExplorer(){
 
   if(!pairs.length){out.innerHTML='<p style="color:var(--flint);font-style:italic">No valid pairings found.</p>';return;}
 
+  // Code → owning recipe, for inferring results on pairs that share a recorded code
+  const codeOwner={};
+  for(const r of recipes) for(const c of (r.codes||[])) codeOwner[codeKey(c.color,c.digits)]=r;
+
   let html='';
   for(const [a,b] of pairs){
     const computedCodes=computeCodes(a,b); // null if no token data for either
     // Apply filter before building HTML
-    const hasKnown=recipes.some(r=>{const m1=norm(r.mat1Name||''),m2=norm(r.mat2Name||'');return(m1===norm(a)&&m2===norm(b))||(m1===norm(b)&&m2===norm(a));});
+    const hasKnown=recipes.some(r=>recipeUsesPair(r,a,b));
     if(explorerFilter==='known'&&!hasKnown) continue;
     if(explorerFilter==='unknown'&&hasKnown) continue;
     const hasTokenData=computedCodes!==null;
 
-    // Recipes that match this ordered pair
-    const matchingRecipes=recipes.filter(r=>{
-      const m1=norm(r.mat1Name||''),m2=norm(r.mat2Name||'');
-      // recipes don't distinguish order, so match either way
-      return (m1===norm(a)&&m2===norm(b))||(m1===norm(b)&&m2===norm(a));
-    });
+    // Recipes crafted with this pair (primary or alternate; order-insensitive)
+    const matchingRecipes=recipes.filter(r=>recipeUsesPair(r,a,b));
     const discoveredKeys=new Set(matchingRecipes.flatMap(r=>(r.codes||[]).map(c=>codeKey(c.color,c.digits))));
 
     // Null codes for this pair (order-insensitive)
@@ -593,9 +617,57 @@ function renderExplorer(){
       </div>`;
     }
 
-    // Unknown computed codes
+    // Unknown computed codes (provisional entries from imported CSVs render richer cards)
     if(showNothing) for(const c of unknownComputed){
       const k=codeKey(c.color,c.digits);
+      // Code already recorded on a recipe for a different pair — the codex maps
+      // code → result, so this combination must craft the same item.
+      const owner=codeOwner[k];
+      if(owner){
+        sec+=`<div class="combo-card state-inferred">
+          ${tokenPairHtml(a,c.rotA,b,c.rotB)}
+          <div class="combo-header">
+            <div class="combo-code-display">${pipHtml(c.color)} ${esc(c.color)} ${esc(c.digits)}</div>
+            <span class="status-badge inferred">Inferred</span>
+          </div>
+          <div class="combo-item-name">${esc(owner.name)}</div>
+          ${owner.id?`<div class="combo-item-num">${esc(owner.id)}</div>`:''}
+          <div style="font-size:.8rem;color:var(--flint)">Same code recorded for this item — this combination should craft it too.</div>
+          <div class="combo-actions">
+            <button class="btn btn-sm btn-primary" onclick="attachInferred('${esc(k)}','${esc(a)}','${esc(b)}')">Add to recipe</button>
+            <button class="btn btn-sm" onclick="openStatusModal(null,'${esc(a)}','${esc(b)}','${esc(k)}',true)">Nothing</button>
+          </div>
+        </div>`;
+        continue;
+      }
+      const p=provisionalCodes[k];
+      if(p){
+        const spoiler=p.revealed
+          ? `${p.name?`<div class="combo-item-name">${esc(p.name)}</div>`:''}
+             ${p.flavor?`<div class="prov-flavor">${esc(p.flavor)}</div>`:''}
+             ${p.gameText&&!p.isNothing?`<div class="prov-gametext">${esc(p.gameText)}</div>`:''}`
+          : `<div><button class="btn btn-sm" onclick="revealProvisional('${esc(k)}')">${p.isNothing?'Reveal hint':'Reveal spoiler'}</button></div>`;
+        const subtitle=p.isNothing
+          ? `<div class="combo-item-num">Reported as nothing crafted — the hint may point at the right recipe</div>`
+          : (p.cardId?`<div class="combo-item-num">${esc(p.cardId)} — locate this card, then confirm</div>`:'');
+        const confirmBtn=p.isNothing?'' :
+          `<button class="btn btn-sm btn-primary" onclick="confirmProvisional('${esc(k)}','${esc(a)}','${esc(b)}')">Confirm</button>`;
+        sec+=`<div class="combo-card state-provisional">
+          ${tokenPairHtml(a,c.rotA,b,c.rotB)}
+          <div class="combo-header">
+            <div class="combo-code-display">${pipHtml(c.color)} ${esc(c.color)} ${esc(c.digits)}</div>
+            <span class="status-badge provisional">Unverified</span>
+          </div>
+          ${subtitle}
+          ${spoiler}
+          <div class="prov-source">Source: ${esc(p.source||'unknown')}</div>
+          <div class="combo-actions">
+            ${confirmBtn}
+            <button class="btn btn-sm" onclick="openStatusModal(null,'${esc(a)}','${esc(b)}','${esc(k)}',true)">Nothing</button>
+          </div>
+        </div>`;
+        continue;
+      }
       sec+=`<div class="combo-card">
         ${tokenPairHtml(a,c.rotA,b,c.rotB)}
         <div class="combo-header">
@@ -774,20 +846,108 @@ function openModal(id){
 
 let pickState={};
 
-function openModalForPair(mat1,mat2,prefillColor,prefillDigits){
-  const existing=recipes.filter(r=>{
-    const m1=norm(r.mat1Name||''),m2=norm(r.mat2Name||'');
-    return (m1===norm(mat1)&&m2===norm(mat2))||(m1===norm(mat2)&&m2===norm(mat1));
-  });
-  if(existing.length){
-    openPickModal(existing,mat1,mat2,prefillColor,prefillDigits);
-    return;
-  }
-  _openNewRecipeForPair(mat1,mat2,prefillColor,prefillDigits);
+// All material pairs that craft this recipe: the primary pair plus any alternates.
+// A recipe gains altPairs when the same code is discovered via a different combination.
+function pairsOf(r){
+  return [
+    {mat1Name:r.mat1Name||'', mat1Cat:r.mat1Cat, mat2Name:r.mat2Name||'', mat2Cat:r.mat2Cat},
+    ...(r.altPairs||[]),
+  ];
 }
 
-function openPickModal(existing,mat1,mat2,prefillColor,prefillDigits){
-  pickState={mat1,mat2,prefillColor,prefillDigits};
+function recipeUsesPair(r,a,b){
+  return pairsOf(r).some(p=>{
+    const m1=norm(p.mat1Name||''),m2=norm(p.mat2Name||'');
+    return (m1===norm(a)&&m2===norm(b))||(m1===norm(b)&&m2===norm(a));
+  });
+}
+
+// Attach mat1+mat2 as an alternate combination on recipe r. `inferred` marks pairs
+// deduced from pip equivalence rather than crafted at the table. Returns false if
+// the recipe already uses the pair (order-insensitive).
+function attachPairToRecipe(r,mat1,mat2,inferred){
+  if(recipeUsesPair(r,mat1,mat2)) return false;
+  const p={
+    mat1Name:mat1, mat1Cat:KM[norm(mat1)]?.cat||'unknown',
+    mat2Name:mat2, mat2Cat:KM[norm(mat2)]?.cat||'unknown',
+  };
+  if(inferred) p.inferred=true;
+  (r.altPairs??=[]).push(p);
+  return true;
+}
+
+// The prefill code already belongs to another recipe: offer to record mat1+mat2 as an
+// additional material combination on it. Returns true when handled (added or already known).
+function offerPairToClashingRecipe(clash,mat1,mat2,key){
+  if(recipeUsesPair(clash,mat1,mat2)){
+    alert(`${key} is already recorded for "${clash.name}" with ${mat1} + ${mat2}.`);
+    return true;
+  }
+  if(!confirm(`${key} is already recorded for "${clash.name}" (${clash.mat1Name||'?'} + ${clash.mat2Name||'?'}).\n\nAdd ${mat1} + ${mat2} as another material combination for "${clash.name}"?`)) return false;
+  attachPairToRecipe(clash,mat1,mat2);
+  save(); renderJournal();
+  if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+  return true;
+}
+
+// One-tap attach from an Explorer "Inferred" card: the code is already recorded on a
+// recipe, so this pair must craft the same item (the codex maps code → result).
+function attachInferred(key,mat1,mat2){
+  const owner=recipes.find(r=>(r.codes||[]).some(c=>codeKey(c.color,c.digits)===key));
+  if(!owner||!attachPairToRecipe(owner,mat1,mat2,true)) return;
+  save(); renderJournal(); renderExplorer();
+}
+
+// Bulk sweep: for every recorded code, find every material pair whose pip alignment
+// produces that code and attach the missing ones as inferred alternate combinations.
+function inferCombinations(){
+  const mats=allMatNames().filter(canCraft);
+  const codeToPairs={};
+  for(const a of mats){
+    if(!canBeLeft(a)) continue;
+    for(const b of mats){
+      const cc=computeCodes(a,b); if(!cc) continue;
+      for(const c of cc)(codeToPairs[codeKey(c.color,c.digits)]??=[]).push([a,b]);
+    }
+  }
+  let added=0; const touched=new Set();
+  for(const r of recipes){
+    for(const c of (r.codes||[])){
+      for(const [a,b] of (codeToPairs[codeKey(c.color,c.digits)]||[])){
+        if(attachPairToRecipe(r,a,b,true)){added++;touched.add(r.name);}
+      }
+    }
+  }
+  if(added){
+    save(); renderJournal();
+    if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+  }
+  alert(added
+    ? `Inferred ${added} additional combination(s) across ${touched.size} recipe(s). They're marked "inferred" on the recipe cards until crafted at the table.`
+    : 'No new combinations could be inferred from the recorded codes.');
+}
+
+function removeAltPair(id,i){
+  const r=recipes.find(x=>x.id===id);
+  const p=r?.altPairs?.[i]; if(!p) return;
+  if(!confirm(`Remove ${p.mat1Name} + ${p.mat2Name} from "${r.name}"?`)) return;
+  r.altPairs.splice(i,1);
+  save(); renderJournal();
+  if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+}
+
+// extra = optional {name, cardId, notes} prefill for a new recipe (used by provisional Confirm)
+function openModalForPair(mat1,mat2,prefillColor,prefillDigits,extra){
+  const existing=recipes.filter(r=>recipeUsesPair(r,mat1,mat2));
+  if(existing.length){
+    openPickModal(existing,mat1,mat2,prefillColor,prefillDigits,extra);
+    return;
+  }
+  _openNewRecipeForPair(mat1,mat2,prefillColor,prefillDigits,extra);
+}
+
+function openPickModal(existing,mat1,mat2,prefillColor,prefillDigits,extra){
+  pickState={mat1,mat2,prefillColor,prefillDigits,extra};
   const codeLabel=prefillColor&&prefillDigits?`${prefillColor} ${prefillDigits}`:'the new code';
   document.getElementById('pick-body').textContent=`Add ${codeLabel} to an existing recipe, or create a new one.`;
   document.getElementById('pick-list').innerHTML=existing.map(r=>`
@@ -803,33 +963,45 @@ function closeHelp(){document.getElementById('help-overlay').classList.add('hidd
 
 function pickRecipe(id){
   closePick();
-  const {prefillColor,prefillDigits}=pickState;
+  const {mat1,mat2,prefillColor,prefillDigits}=pickState;
   openModal(id);
   if(prefillColor&&prefillDigits){
     const key=codeKey(prefillColor,prefillDigits);
     const alreadyOnThis=pendingCodes.some(c=>codeKey(c.color,c.digits)===key);
     const clash=!alreadyOnThis&&recipes.find(r=>r.id!==id&&(r.codes||[]).some(x=>codeKey(x.color,x.digits)===key));
-    if(clash) alert(`${key} is already recorded for "${clash.name}".`);
+    if(clash){
+      // The code belongs to a different recipe — offer to attach this combination there instead
+      if(offerPairToClashingRecipe(clash,mat1,mat2,key)) closeModal();
+    }
     else if(!alreadyOnThis){pendingCodes.push({color:prefillColor,digits:prefillDigits});renderCodeList();}
   }
 }
 
 function pickNew(){
   closePick();
-  const {mat1,mat2,prefillColor,prefillDigits}=pickState;
-  _openNewRecipeForPair(mat1,mat2,prefillColor,prefillDigits);
+  const {mat1,mat2,prefillColor,prefillDigits,extra}=pickState;
+  _openNewRecipeForPair(mat1,mat2,prefillColor,prefillDigits,extra);
 }
 
-function _openNewRecipeForPair(mat1,mat2,prefillColor,prefillDigits){
+function _openNewRecipeForPair(mat1,mat2,prefillColor,prefillDigits,extra){
+  let prefillCode=!!(prefillColor&&prefillDigits);
+  if(prefillCode){
+    const key=codeKey(prefillColor,prefillDigits);
+    const clash=recipes.find(r=>(r.codes||[]).some(x=>codeKey(x.color,x.digits)===key));
+    if(clash){
+      if(offerPairToClashingRecipe(clash,mat1,mat2,key)) return; // combination attached — no new recipe needed
+      prefillCode=false; // declined — open the form without the code
+    }
+  }
   openModal();
   document.getElementById('f-mat1-name').value=mat1;
   document.getElementById('f-mat2-name').value=mat2;
-  if(prefillColor&&prefillDigits){
-    const key=codeKey(prefillColor,prefillDigits);
-    const clash=recipes.find(r=>(r.codes||[]).some(x=>codeKey(x.color,x.digits)===key));
-    if(clash) alert(`${key} is already recorded for "${clash.name}". Opening modal without the code pre-filled.`);
-    else{pendingCodes.push({color:prefillColor,digits:prefillDigits});renderCodeList();}
+  if(extra){
+    document.getElementById('f-name').value=extra.name||'';
+    document.getElementById('f-item-num').value=extra.cardId||'';
+    document.getElementById('f-notes').value=extra.notes||'';
   }
+  if(prefillCode){pendingCodes.push({color:prefillColor,digits:prefillDigits});renderCodeList();}
 }
 
 function closeModal(){document.getElementById('modal-overlay').classList.add('hidden');}
@@ -855,8 +1027,13 @@ function saveRecipe(){
     notes:document.getElementById('f-notes').value.trim(),
     addedAt:editingId?(recipes.find(r=>r.id===editingId)?.addedAt||Date.now()):Date.now(),
   };
+  // The form edits only the primary pair — keep any alternate combinations
+  const prevAlt=editingId&&recipes.find(r=>r.id===editingId)?.altPairs;
+  if(prevAlt?.length) recipe.altPairs=prevAlt;
   if(editingId){const i=recipes.findIndex(r=>r.id===editingId);if(i!==-1)recipes[i]=recipe;else recipes.push(recipe);}
   else recipes.push(recipe);
+  // A saved recipe is table-verified — clear any provisional entries for its codes
+  for(const c of recipe.codes) delete provisionalCodes[codeKey(c.color,c.digits)];
   save(); renderJournal(); closeModal();
   if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
 }
@@ -871,10 +1048,11 @@ function deleteRecipe(id){
   save(); renderJournal();
   if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
 }
-function clearAllConfirm(){
-  if(!confirm(`Delete all ${recipes.length} recipe(s)? This cannot be undone.`)) return;
-  recipes=[]; nullCodes={};
-  save(); renderJournal();
+function clearJournalFilters(){
+  document.getElementById('search').value='';
+  document.getElementById('filter-mode-and').checked=false;
+  matFilterTags=[];
+  renderMatTags(); renderJournal();
 }
 
 // ═══════════════════════════════════════════════════
@@ -933,7 +1111,8 @@ function acKeyNav(e,acId,onConfirm,idxMap,mapKey){
 // form material autocomplete
 let fmIdxMap={};
 function fmAcShow(inputId,acId){
-  const q=document.getElementById(inputId).value;
+  let q=document.getElementById(inputId).value;
+  if(KM[norm(q)]) q=''; // already a known material — show the full list so switching is easy
   const matches=allMatNames().filter(n=>!q||n.toLowerCase().includes(q.toLowerCase())).slice(0,12);
   const ac=document.getElementById(acId); if(!ac) return;
   if(!matches.length){ac.classList.add('hidden');return;}
@@ -960,7 +1139,7 @@ function fmPick(name,acId,inputId){
 }
 
 document.addEventListener('click',e=>{
-  ['mat-autocomplete','ex-ac1','ex-ac2','fac1','fac2'].forEach(id=>{
+  ['mat-autocomplete','fac1','fac2'].forEach(id=>{
     const el=document.getElementById(id);
     if(el&&!el.parentElement?.contains(e.target)) hideAc(id);
   });
@@ -974,7 +1153,11 @@ let pendingImport = null; // {recipes, nullCodes, meta} awaiting user choice
 
 function save() {
   lastUpdated = new Date().toISOString();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({recipes, nullCodes, tokenData, customMaterials, lastUpdated, driveFileId, driveLastSynced}));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    recipes, nullCodes, tokenData, customMaterials,
+    culture, behemoths, challengeRecord, loomingChallenges, investigations, notePages, provisionalCodes,
+    lastUpdated, driveFileId, driveLastSynced,
+  }));
 }
 
 function fmtDate(iso) {
@@ -986,18 +1169,35 @@ function fmtDate(iso) {
 function buildExportPayload() {
   return {
     app: 'Stonesaga Crafting Journal',
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     lastUpdated: lastUpdated || new Date().toISOString(),
     recipes,
     nullCodes,
     customMaterials,
+    culture,
+    behemoths,
+    challengeRecord,
+    loomingChallenges,
+    investigations,
+    notePages,
+    provisionalCodes,
     driveFileId,
   };
 }
 
+function journalEntryCount(d) {
+  return (d.behemoths?.length||0) + (d.challengeRecord?.length||0) + (d.loomingChallenges?.length||0)
+       + (d.investigations?.length||0) + (d.notePages?.length||0) + (d.provisionalCodes ? Object.keys(d.provisionalCodes).length : 0)
+       + (d.culture ? (d.culture.tribeName?1:0) + ['structures','mantlePowers','knowledgeCards','taboos','pigments']
+           .reduce((n,k)=>n+(d.culture[k]?.length||0),0) : 0);
+}
+
 function exportData() {
-  if (!recipes.length && !Object.keys(nullCodes).length && !customMaterials.length) { alert('Nothing to export.'); return; }
+  if (!recipes.length && !Object.keys(nullCodes).length && !customMaterials.length
+      && !journalEntryCount({culture, behemoths, challengeRecord, loomingChallenges, investigations, notePages, provisionalCodes})) {
+    alert('Nothing to export.'); return;
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([JSON.stringify(buildExportPayload(),null,2)], {type:'application/json'}));
   const ts = new Date().toISOString().replace('T',' ').slice(0,16).replace(/[: ]/g,'-');
@@ -1091,7 +1291,8 @@ function importData(event) {
       document.getElementById('im-summary').innerHTML =
         `<strong>File:</strong> ${esc(file.name)}<br>` +
         `<strong>Last updated:</strong> ${esc(fileUpdated)}<br>` +
-        `<strong>Recipes:</strong> ${incoming.length} &nbsp;·&nbsp; <strong>Dead-end codes:</strong> ${nullCount}`;
+        `<strong>Recipes:</strong> ${incoming.length} &nbsp;·&nbsp; <strong>Dead-end codes:</strong> ${nullCount}` +
+        (journalEntryCount(d) ? ` &nbsp;·&nbsp; <strong>Journal entries:</strong> ${journalEntryCount(d)}` : '');
 
       const curUpdated = fmtDate(lastUpdated);
       document.getElementById('im-current').innerHTML =
@@ -1104,9 +1305,44 @@ function importData(event) {
   reader.readAsText(file);
 }
 
+// Union by entry id; on a shared id the entry with the newer updatedAt wins.
+function mergeById(local, incoming) {
+  const map = Object.fromEntries(local.map(e => [e.id, e]));
+  for (const e of incoming || []) {
+    const cur = map[e.id];
+    if (!cur || (e.updatedAt||0) > (cur.updatedAt||0)) map[e.id] = e;
+  }
+  return Object.values(map);
+}
+
+// Same idea for keyed objects (e.g. provisionalCodes keyed by "Blue 1111").
+function mergeByKey(local, incoming) {
+  const out = {...local};
+  for (const [k,v] of Object.entries(incoming || {})) {
+    const cur = out[k];
+    if (!cur || (v.updatedAt||0) > (cur.updatedAt||0)) out[k] = v;
+  }
+  return out;
+}
+
+function mergeCulture(local, incoming) {
+  if (!incoming) return local;
+  const incomingNewer = (incoming.updatedAt||0) > (local.updatedAt||0);
+  return {
+    tribeName: (incomingNewer && incoming.tribeName) ? incoming.tribeName : (local.tribeName || incoming.tribeName || ''),
+    updatedAt: Math.max(local.updatedAt||0, incoming.updatedAt||0) || null,
+    structures:     mergeById(local.structures||[],     incoming.structures),
+    mantlePowers:   mergeById(local.mantlePowers||[],   incoming.mantlePowers),
+    knowledgeCards: mergeById(local.knowledgeCards||[], incoming.knowledgeCards),
+    taboos:         mergeById(local.taboos||[],         incoming.taboos),
+    pigments:       mergeById(local.pigments||[],       incoming.pigments),
+  };
+}
+
 function doImport(mode) {
   if (!pendingImport) return;
   const { recipes: incoming, nullCodes: inNull, customMaterials: inMats, driveFileId: inDriveId } = pendingImport;
+  const meta = (pendingImport.meta && !Array.isArray(pendingImport.meta)) ? pendingImport.meta : {};
   if (mode === 'merge') {
     const map = Object.fromEntries(recipes.map(r => [r.id, r]));
     incoming.forEach(r => { map[r.id] = r; });
@@ -1114,10 +1350,24 @@ function doImport(mode) {
     Object.assign(nullCodes, inNull);
     const matNames = new Set(customMaterials.map(m => norm(m.name)));
     inMats.forEach(m => { if (!matNames.has(norm(m.name))) customMaterials.push(m); });
+    culture           = mergeCulture(culture, meta.culture);
+    behemoths         = mergeById(behemoths,         meta.behemoths);
+    challengeRecord   = mergeById(challengeRecord,   meta.challengeRecord);
+    loomingChallenges = mergeById(loomingChallenges, meta.loomingChallenges);
+    investigations    = mergeById(investigations,    meta.investigations);
+    notePages         = mergeById(notePages,         meta.notePages);
+    provisionalCodes  = mergeByKey(provisionalCodes, meta.provisionalCodes);
   } else {
     recipes         = incoming;
     nullCodes       = inNull;
     customMaterials = inMats;
+    culture           = meta.culture           || emptyCulture();
+    behemoths         = meta.behemoths         || [];
+    challengeRecord   = meta.challengeRecord   || [];
+    loomingChallenges = meta.loomingChallenges || [];
+    investigations    = meta.investigations    || [];
+    notePages         = meta.notePages         || [];
+    provisionalCodes  = meta.provisionalCodes  || {};
   }
   if (!driveFileId && inDriveId) driveFileId = inDriveId;
   pendingImport = null;
@@ -1187,6 +1437,13 @@ function load() {
       nullCodes       = d.nullCodes       || {};
       tokenData       = d.tokenData       || {};
       customMaterials = d.customMaterials || [];
+      culture           = d.culture           || emptyCulture();
+      behemoths         = d.behemoths         || [];
+      challengeRecord   = d.challengeRecord   || [];
+      loomingChallenges = d.loomingChallenges || [];
+      investigations    = d.investigations    || [];
+      notePages         = d.notePages         || [];
+      provisionalCodes  = d.provisionalCodes  || {};
       lastUpdated     = d.lastUpdated     || null;
       driveFileId     = d.driveFileId     || null;
       driveLastSynced = d.driveLastSynced || null;
@@ -1434,7 +1691,8 @@ function _loadDriveImport(d) {
   document.getElementById('im-summary').innerHTML =
     `<strong>Source:</strong> Drive<br>` +
     `<strong>Last updated:</strong> ${esc(fileUpdated)}<br>` +
-    `<strong>Recipes:</strong> ${incoming.length} &nbsp;·&nbsp; <strong>Dead-end codes:</strong> ${Object.keys(inNull).length}`;
+    `<strong>Recipes:</strong> ${incoming.length} &nbsp;·&nbsp; <strong>Dead-end codes:</strong> ${Object.keys(inNull).length}` +
+    (journalEntryCount(d) ? ` &nbsp;·&nbsp; <strong>Journal entries:</strong> ${journalEntryCount(d)}` : '');
   document.getElementById('im-current').innerHTML =
     `Your current data: ${recipes.length} recipe(s), ${Object.keys(nullCodes).length} dead-end code(s) — last updated ${esc(fmtDate(lastUpdated))}`;
   renderConflicts(detectImportConflicts(incoming, inNull));
@@ -1442,10 +1700,251 @@ function _loadDriveImport(d) {
 }
 
 // ═══════════════════════════════════════════════════
+// JOURNAL SECTIONS (Culture, Behemoths, Challenges, Looming, Investigations, Notes)
+// ═══════════════════════════════════════════════════
+// One spec-driven editor covers every section: fields describe the form, get/set
+// point at the backing list, render redraws the tab. Entries are {id, ...fields,
+// updatedAt} so the Phase-0 merge logic (union by id, newer wins) applies as-is.
+
+const JOURNAL_SECTIONS = {
+  structure: {label:'Structure', get:()=>culture.structures, set:v=>culture.structures=v, render:()=>renderCulture(), fields:[
+    {key:'name',  label:'Name', required:true, placeholder:'e.g. Fire Pit'},
+    {key:'notes', label:'Notes', type:'textarea'},
+  ]},
+  mantle: {label:'Mantle Power', get:()=>culture.mantlePowers, set:v=>culture.mantlePowers=v, render:()=>renderCulture(), fields:[
+    {key:'name', label:'Name', required:true},
+    {key:'description', label:'Description', type:'textarea'},
+  ]},
+  knowledge: {label:'Knowledge Card', get:()=>culture.knowledgeCards, set:v=>culture.knowledgeCards=v, render:()=>renderCulture(), fields:[
+    {key:'cardId', label:'Card ID', placeholder:'e.g. KN04'},
+    {key:'name', label:'Name', required:true},
+  ]},
+  taboo: {label:'Taboo', get:()=>culture.taboos, set:v=>culture.taboos=v, render:()=>renderCulture(), fields:[
+    {key:'text', label:'Taboo', required:true},
+  ]},
+  pigment: {label:'Pigment', get:()=>culture.pigments, set:v=>culture.pigments=v, render:()=>renderCulture(), fields:[
+    {key:'name', label:'Pigment', required:true, placeholder:'e.g. Red ochre'},
+  ]},
+  behemoth: {label:'Behemoth', get:()=>behemoths, set:v=>behemoths=v, render:()=>renderBehemoths(), fields:[
+    {key:'name', label:'Name', required:true},
+    {key:'lairHex', label:'Lair hex', placeholder:'e.g. H7'},
+    {key:'demeanor', label:'Demeanor', placeholder:'e.g. Aggressive, Dormant'},
+    {key:'secrets', label:'Revealed secrets (one per line, in reveal order)', type:'lines', rows:4},
+    {key:'notes', label:'Notes', type:'textarea'},
+  ]},
+  challenge: {label:'Challenge', get:()=>challengeRecord, set:v=>challengeRecord=v, render:()=>renderChallenges(), fields:[
+    {key:'epoch', label:'Epoch', type:'number', required:true, placeholder:'e.g. 2'},
+    {key:'name', label:'Name', required:true},
+    {key:'cardId', label:'Card ID', placeholder:'e.g. CH08'},
+    {key:'outcome', label:'Outcome', type:'select', options:['','Won','Lost','Fled']},
+    {key:'notes', label:'Notes', type:'textarea'},
+  ]},
+  looming: {label:'Looming Challenge', get:()=>loomingChallenges, set:v=>loomingChallenges=v, render:()=>renderLooming(),
+    onNew:e=>{e.order=loomingChallenges.reduce((m,x)=>Math.max(m,x.order??-1),-1)+1;}, fields:[
+    {key:'name', label:'Name', required:true},
+    {key:'cardId', label:'Card ID'},
+    {key:'prepareBy', label:'Prepare by (epoch)', placeholder:'e.g. 3'},
+    {key:'notes', label:'Notes', type:'textarea'},
+  ]},
+  investigation: {label:'Investigation', get:()=>investigations, set:v=>investigations=v, render:()=>renderInvestigations(), fields:[
+    {key:'omen', label:'Omen (the trigger / sign)', required:true},
+    {key:'cardId', label:'Investigation card ID', placeholder:'e.g. IV03'},
+    {key:'notes', label:'Notes / findings', type:'textarea', rows:4},
+  ]},
+  note: {label:'Note Page', get:()=>notePages, set:v=>notePages=v, render:()=>renderNotes(), fields:[
+    {key:'title', label:'Title', required:true},
+    {key:'body', label:'Text', type:'textarea', rows:12},
+  ]},
+};
+
+let jeState = null; // {section, id} while the entry modal is open
+
+function jeFieldHtml(f, val){
+  const id='je-f-'+f.key;
+  const label=`<label>${esc(f.label)}${f.required?' *':''}</label>`;
+  if(f.type==='textarea'||f.type==='lines')
+    return `<div class="form-group">${label}<textarea class="form-control" id="${id}" rows="${f.rows||3}" placeholder="${esc(f.placeholder||'')}">${esc(val)}</textarea></div>`;
+  if(f.type==='select')
+    return `<div class="form-group">${label}<select class="form-control" id="${id}">${f.options.map(o=>`<option value="${esc(o)}"${o===val?' selected':''}>${esc(o)||'—'}</option>`).join('')}</select></div>`;
+  return `<div class="form-group">${label}<input class="form-control" id="${id}" type="${f.type==='number'?'number':'text'}" placeholder="${esc(f.placeholder||'')}" value="${esc(val)}"></div>`;
+}
+
+function openJournalEntry(section, id){
+  const spec=JOURNAL_SECTIONS[section];
+  const entry=id?spec.get().find(e=>e.id===id):null;
+  if(id&&!entry) return;
+  jeState={section, id:id||null};
+  document.getElementById('je-title').textContent=(entry?'Edit ':'Add ')+spec.label;
+  document.getElementById('je-fields').innerHTML=spec.fields.map(f=>{
+    const v=entry?entry[f.key]:undefined;
+    return jeFieldHtml(f, f.type==='lines'?(v||[]).join('\n'):(v??''));
+  }).join('');
+  document.getElementById('je-overlay').classList.remove('hidden');
+  document.getElementById('je-f-'+spec.fields[0].key).focus();
+}
+
+function closeJournalEntry(){document.getElementById('je-overlay').classList.add('hidden');jeState=null;}
+
+function saveJournalEntry(){
+  if(!jeState) return;
+  const spec=JOURNAL_SECTIONS[jeState.section];
+  const entry={id:jeState.id||genId(), updatedAt:Date.now()};
+  for(const f of spec.fields){
+    let v=document.getElementById('je-f-'+f.key).value;
+    if(f.type==='lines') v=v.split('\n').map(s=>s.trim()).filter(Boolean);
+    else v=v.trim();
+    if(f.required&&(f.type==='lines'?!v.length:!v)){alert(`${f.label} is required.`);return;}
+    entry[f.key]=v;
+  }
+  if(!jeState.id&&spec.onNew) spec.onNew(entry);
+  const list=spec.get();
+  const i=list.findIndex(e=>e.id===entry.id);
+  if(i!==-1) list[i]={...list[i],...entry}; // keep fields not on the form (e.g. looming order)
+  else list.push(entry);
+  save(); closeJournalEntry(); spec.render();
+}
+
+function deleteJournalEntry(section, id){
+  const spec=JOURNAL_SECTIONS[section];
+  const e=spec.get().find(x=>x.id===id);
+  if(!e||!confirm(`Delete this ${spec.label.toLowerCase()}?`)) return;
+  spec.set(spec.get().filter(x=>x.id!==id));
+  save(); spec.render();
+}
+
+function journalCardActions(section, id){
+  return `<div class="journal-actions">
+    <button class="btn btn-sm" onclick="openJournalEntry('${section}','${id}')">Edit</button>
+    <button class="btn btn-sm btn-danger" onclick="deleteJournalEntry('${section}','${id}')">Delete</button>
+  </div>`;
+}
+
+// ── Culture ──
+function saveTribeName(v){
+  culture.tribeName=v.trim();
+  culture.updatedAt=Date.now();
+  save();
+}
+
+function renderCulture(){
+  document.getElementById('culture-tribe').value=culture.tribeName||'';
+  const blocks=[
+    ['structure','Structures',culture.structures,e=>`<strong>${esc(e.name)}</strong>${e.notes?` — ${esc(e.notes)}`:''}`],
+    ['mantle','Mantle Powers',culture.mantlePowers,e=>`<strong>${esc(e.name)}</strong>${e.description?` — ${esc(e.description)}`:''}`],
+    ['knowledge','Knowledge Cards',culture.knowledgeCards,e=>`${e.cardId?`<span class="recipe-code" style="font-size:.75rem">${esc(e.cardId)}</span> `:''}<strong>${esc(e.name)}</strong>`],
+    ['taboo','Taboos',culture.taboos,e=>esc(e.text)],
+    ['pigment','Pigments',culture.pigments,e=>esc(e.name)],
+  ];
+  document.getElementById('culture-lists').innerHTML=blocks.map(([sec,title,list,fmt])=>`
+    <div class="culture-block">
+      <h3>${title}<button class="btn btn-sm" onclick="openJournalEntry('${sec}')">+ Add</button></h3>
+      ${list.length?list.map(e=>`
+        <div class="culture-row">
+          <div style="flex:1">${fmt(e)}</div>
+          <button class="btn btn-sm" onclick="openJournalEntry('${sec}','${e.id}')">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteJournalEntry('${sec}','${e.id}')">Del</button>
+        </div>`).join('')
+      :'<p class="journal-empty">None yet.</p>'}
+    </div>`).join('');
+}
+
+// ── Behemoths ──
+function renderBehemoths(){
+  const el=document.getElementById('behemoths-list');
+  el.innerHTML=behemoths.length?behemoths.map(e=>`
+    <div class="journal-card">
+      <div class="journal-card-title">${esc(e.name)}</div>
+      ${e.demeanor?`<div class="journal-card-sub">Demeanor: ${esc(e.demeanor)}</div>`:''}
+      ${e.lairHex?`<div class="journal-card-sub">Lair hex: ${esc(e.lairHex)}</div>`:''}
+      ${(e.secrets||[]).length?`<div class="journal-card-sub">Revealed secrets</div><ol class="secret-list">${e.secrets.map(s=>`<li>${esc(s)}</li>`).join('')}</ol>`:''}
+      ${e.notes?`<div class="journal-card-body">${esc(e.notes)}</div>`:''}
+      ${journalCardActions('behemoth',e.id)}
+    </div>`).join('')
+  :'<p class="journal-empty">No behemoths encountered yet.</p>';
+}
+
+// ── Challenge Record (grouped by epoch, newest first, newest open) ──
+function renderChallenges(){
+  const el=document.getElementById('challenges-list');
+  if(!challengeRecord.length){el.innerHTML='<p class="journal-empty">No challenges recorded yet.</p>';return;}
+  const byEpoch={};
+  for(const c of challengeRecord)(byEpoch[c.epoch]??=[]).push(c);
+  const epochs=Object.keys(byEpoch).sort((a,b)=>Number(b)-Number(a));
+  el.innerHTML=epochs.map((ep,i)=>`
+    <details class="epoch-group"${i===0?' open':''}>
+      <summary>Epoch ${esc(ep)} — ${byEpoch[ep].length} challenge${byEpoch[ep].length>1?'s':''}</summary>
+      <div class="journal-grid">${byEpoch[ep].map(c=>`
+        <div class="journal-card">
+          <div class="journal-card-title">${esc(c.name)}</div>
+          <div class="journal-card-sub">${c.cardId?`Card ${esc(c.cardId)} `:''}${c.outcome?`<span class="outcome-badge ${norm(c.outcome)}">${esc(c.outcome)}</span>`:''}</div>
+          ${c.notes?`<div class="journal-card-body">${esc(c.notes)}</div>`:''}
+          ${journalCardActions('challenge',c.id)}
+        </div>`).join('')}
+      </div>
+    </details>`).join('');
+}
+
+// ── Looming Challenges (ordered, ▲▼ reorder) ──
+function loomingSorted(){return [...loomingChallenges].sort((a,b)=>(a.order??0)-(b.order??0));}
+
+function moveLooming(id, dir){
+  const s=loomingSorted();
+  const i=s.findIndex(e=>e.id===id), j=i+dir;
+  if(i<0||j<0||j>=s.length) return;
+  [s[i],s[j]]=[s[j],s[i]];
+  s.forEach((e,idx)=>{e.order=idx;e.updatedAt=Date.now();});
+  save(); renderLooming();
+}
+
+function renderLooming(){
+  const el=document.getElementById('looming-list');
+  const s=loomingSorted();
+  el.innerHTML=s.length?s.map((e,i)=>`
+    <div class="journal-card looming-card">
+      <div class="looming-order">
+        <button class="btn btn-sm"${i===0?' disabled':''} onclick="moveLooming('${e.id}',-1)">▲</button>
+        <button class="btn btn-sm"${i===s.length-1?' disabled':''} onclick="moveLooming('${e.id}',1)">▼</button>
+      </div>
+      <div class="looming-main">
+        <div class="journal-card-title">${i+1}. ${esc(e.name)}</div>
+        <div class="journal-card-sub">${e.cardId?`Card ${esc(e.cardId)}`:''}${e.cardId&&e.prepareBy?' · ':''}${e.prepareBy?`Prepare by epoch ${esc(e.prepareBy)}`:''}</div>
+        ${e.notes?`<div class="journal-card-body">${esc(e.notes)}</div>`:''}
+        ${journalCardActions('looming',e.id)}
+      </div>
+    </div>`).join('')
+  :'<p class="journal-empty">No looming challenges.</p>';
+}
+
+// ── Investigations ──
+function renderInvestigations(){
+  const el=document.getElementById('investigations-list');
+  el.innerHTML=investigations.length?investigations.map(e=>`
+    <div class="journal-card">
+      <div class="journal-card-title">${esc(e.omen)}</div>
+      ${e.cardId?`<div class="journal-card-sub">Card ${esc(e.cardId)}</div>`:''}
+      ${e.notes?`<div class="journal-card-body">${esc(e.notes)}</div>`:''}
+      ${journalCardActions('investigation',e.id)}
+    </div>`).join('')
+  :'<p class="journal-empty">No investigations recorded yet.</p>';
+}
+
+// ── Notes ──
+function renderNotes(){
+  const el=document.getElementById('notes-list');
+  el.innerHTML=notePages.length?notePages.map(e=>`
+    <div class="journal-card">
+      <div class="journal-card-title">${esc(e.title)}</div>
+      ${e.body?`<div class="journal-card-body">${esc(e.body)}</div>`:''}
+      ${journalCardActions('note',e.id)}
+    </div>`).join('')
+  :'<p class="journal-empty">No notes yet.</p>';
+}
+
+// ═══════════════════════════════════════════════════
 // KEYBOARD
 // ═══════════════════════════════════════════════════
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeModal();closeStatusModal();closeImportModal();closePick();closeHelp();closeAddMaterialModal();closeDriveModal();}
+  if(e.key==='Escape'){closeModal();closeStatusModal();closeImportModal();closePick();closeHelp();closeAddMaterialModal();closeDriveModal();closeJournalEntry();}
   if(e.key==='n'&&!e.target.matches('input,textarea,select')) openModal();
 });
 

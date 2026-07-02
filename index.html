@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Stonesaga — Crafting Journal</title>
-<!-- TODO: apple-touch-icon.png (180×180) + apple-mobile-web-app meta tags — see app.js TODO block -->
+<!-- TODO (ON HOLD — icon artwork still to be designed): apple-touch-icon.png (180×180) + apple-mobile-web-app meta tags — see app.js TODO block -->
 <link rel="stylesheet" href="styles.css?v=STAMP">
 </head>
 <body>
@@ -19,10 +19,12 @@
     <button class="btn" onclick="exportData()">Export JSON</button>
     <button class="btn" onclick="openDriveModal()">Drive Sync</button>
     <button class="btn" onclick="triggerImportTokens()" title="Load token pip data JSON">Load Token Data</button>
+    <button class="btn" onclick="triggerImportCodes()" title="Import unverified crafting codes from a community CSV (Code;Flavor;Game Text;Item Name)">Import Codes CSV</button>
     <button class="btn btn-primary" onclick="openModal()">+ Add Recipe</button>
     <button class="btn" onclick="openHelp()" title="Help">?</button>
     <input type="file" id="import-file" accept=".json" onchange="importData(event)">
     <input type="file" id="import-tokens-file" accept=".json" onchange="importTokenData(event)">
+    <input type="file" id="import-codes-file" accept=".csv,.txt" multiple onchange="importCodesCsv(event)">
   </div>
 </header>
 
@@ -36,44 +38,21 @@
     <button class="tab-btn active" onclick="switchTab('explorer',this)">Crafting</button>
     <button class="tab-btn" onclick="switchTab('journal',this)">Recipes</button>
     <button class="tab-btn" onclick="switchTab('materials',this)">Materials</button>
-    <!-- TODO: Add tabs for remaining journal sections:
-         Valley Map | Culture | Behemoths | Challenges | Looming | Investigations | Cave Wall | Notes
-         (Materials tab already implemented)
-         Each maps to a tab-panel below and a switchTab() call in app.js. -->
+    <button class="tab-btn" onclick="switchTab('culture',this)">Culture</button>
+    <button class="tab-btn" onclick="switchTab('behemoths',this)">Behemoths</button>
+    <button class="tab-btn" onclick="switchTab('challenges',this)">Challenges</button>
+    <button class="tab-btn" onclick="switchTab('looming',this)">Looming</button>
+    <button class="tab-btn" onclick="switchTab('investigations',this)">Investigations</button>
+    <button class="tab-btn" onclick="switchTab('notes',this)">Notes</button>
+    <!-- Deferred tabs (see app.js TODO block): Valley Map | Cave Wall -->
   </div>
 
-  <!-- TODO: VALLEY MAP tab-panel
+  <!-- TODO: VALLEY MAP tab-panel (deferred)
        <div class="tab-panel" id="tab-valley-map">
          Hex grid SVG + labelling UI. Background image upload. Hex annotation store.
        </div> -->
 
-  <!-- TODO: CULTURE tab-panel
-       <div class="tab-panel" id="tab-culture">
-         Tribe name. Editable lists for: Structures, Mantle Powers, Knowledge Cards, Taboos, Pigments.
-       </div> -->
-
-  <!-- TODO: BEHEMOTHS tab-panel
-       <div class="tab-panel" id="tab-behemoths">
-         List of behemoth cards. Each: name, lair hex, demeanor, revealed secrets (progressive unlock).
-       </div> -->
-
-  <!-- TODO: CHALLENGE RECORD tab-panel
-       <div class="tab-panel" id="tab-challenges">
-         Challenges grouped by Epoch. Each entry: name, card ID, outcome, notes.
-         Collapsible epoch sections, newest first.
-       </div> -->
-
-  <!-- TODO: LOOMING CHALLENGES tab-panel
-       <div class="tab-panel" id="tab-looming">
-         Ordered list of upcoming challenges. Re-orderable. Fields: name, card ID, epoch marker, notes.
-       </div> -->
-
-  <!-- TODO: INVESTIGATIONS tab-panel
-       <div class="tab-panel" id="tab-investigations">
-         List of investigation entries. Each: omen, card ID, notes/findings.
-       </div> -->
-
-  <!-- TODO: CAVE WALL tab-panel
+  <!-- TODO: CAVE WALL tab-panel (deferred)
        <div class="tab-panel" id="tab-cave-wall">
          Gallery of cave drawings. Each entry has a name (always) + optional image.
          Image sources: file upload (photo) OR in-browser SVG canvas (PointerEvents,
@@ -81,16 +60,51 @@
          Store images as base64 in IndexedDB (too large for localStorage).
        </div> -->
 
-  <!-- TODO: NOTES tab-panel
-       <div class="tab-panel" id="tab-notes">
-         Free-form textarea or named note pages. Simple Markdown rendering optional.
-       </div> -->
+  <!-- CULTURE -->
+  <div class="tab-panel" id="tab-culture">
+    <div class="form-group" style="max-width:420px">
+      <label>Tribe Name</label>
+      <input class="form-control" id="culture-tribe" placeholder="Name your tribe…" onchange="saveTribeName(this.value)">
+    </div>
+    <div class="culture-lists" id="culture-lists"></div>
+  </div>
+
+  <!-- BEHEMOTHS -->
+  <div class="tab-panel" id="tab-behemoths">
+    <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('behemoth')">+ Add Behemoth</button></div>
+    <div class="journal-grid" id="behemoths-list"></div>
+  </div>
+
+  <!-- CHALLENGE RECORD -->
+  <div class="tab-panel" id="tab-challenges">
+    <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('challenge')">+ Add Challenge</button></div>
+    <div id="challenges-list"></div>
+  </div>
+
+  <!-- LOOMING CHALLENGES -->
+  <div class="tab-panel" id="tab-looming">
+    <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('looming')">+ Add Looming Challenge</button></div>
+    <div class="looming-list" id="looming-list"></div>
+  </div>
+
+  <!-- INVESTIGATIONS -->
+  <div class="tab-panel" id="tab-investigations">
+    <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('investigation')">+ Add Investigation</button></div>
+    <div class="journal-grid" id="investigations-list"></div>
+  </div>
+
+  <!-- NOTES -->
+  <div class="tab-panel" id="tab-notes">
+    <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('note')">+ Add Note Page</button></div>
+    <div class="journal-grid" id="notes-list"></div>
+  </div>
 
   <!-- JOURNAL -->
   <div class="tab-panel" id="tab-journal">
     <div class="controls">
       <input class="search-box" type="text" placeholder="Search by item name, code…" oninput="renderJournal()" id="search">
-      <button class="btn btn-danger" onclick="clearAllConfirm()" id="clear-btn" style="display:none">Clear All</button>
+      <button class="btn" onclick="inferCombinations()" title="Find every material pair whose pips produce an already-recorded code, and attach them as inferred combinations">Infer Combinations</button>
+      <button class="btn" onclick="clearJournalFilters()" id="clear-btn" style="display:none">Clear Search</button>
     </div>
     <div class="controls" style="margin-bottom:1.5rem">
       <div class="mat-filter-wrap" id="mat-filter-wrap">
@@ -125,25 +139,14 @@
     <div class="explorer-top">
       <div class="explorer-mat-col">
         <label>Material A</label>
-        <div class="ac-wrap">
-          <input class="form-control" id="ex-mat1" placeholder="e.g. Wood (hardened)" autocomplete="off"
-            oninput="exAcShow('ex-mat1','ex-ac1')" onkeydown="exAcKey(event,'ex-mat1','ex-ac1')"
-            onfocus="exAcShow('ex-mat1','ex-ac1')">
-          <div class="mat-autocomplete hidden" id="ex-ac1"></div>
-        </div>
+        <select class="form-control" id="ex-mat1" onchange="renderExplorer()"></select>
       </div>
       <div class="explorer-mat-col">
-        <label>Material B <span style="font-size:.7rem;color:var(--flint)">(blank = all)</span></label>
-        <div class="ac-wrap">
-          <input class="form-control" id="ex-mat2" placeholder="e.g. Feather (cut)" autocomplete="off"
-            oninput="exAcShow('ex-mat2','ex-ac2')" onkeydown="exAcKey(event,'ex-mat2','ex-ac2')"
-            onfocus="exAcShow('ex-mat2','ex-ac2')">
-          <div class="mat-autocomplete hidden" id="ex-ac2"></div>
-        </div>
+        <label>Material B</label>
+        <select class="form-control" id="ex-mat2" onchange="renderExplorer()"></select>
       </div>
       <div>
-        <button class="btn btn-primary" onclick="renderExplorer()">Show Combinations</button>
-        <button class="btn" onclick="clearExplorer()" style="margin-left:.4rem">Clear</button>
+        <button class="btn" onclick="clearExplorer()">Clear</button>
       </div>
     </div>
     <div class="explorer-filter-bar">
@@ -189,7 +192,7 @@
           <input class="form-control" id="f-mat1-name" placeholder="e.g. Riverstone (flaked)" autocomplete="off"
             oninput="fmAcShow('f-mat1-name','fac1')"
             onkeydown="fmAcKey(event,'f-mat1-name','fac1')"
-            onfocus="fmAcShow('f-mat1-name','fac1')">
+            onfocus="this.select();fmAcShow('f-mat1-name','fac1')">
           <div class="mat-autocomplete hidden" id="fac1"></div>
         </div>
       </div>
@@ -201,7 +204,7 @@
           <input class="form-control" id="f-mat2-name" placeholder="e.g. Feather" autocomplete="off"
             oninput="fmAcShow('f-mat2-name','fac2')"
             onkeydown="fmAcKey(event,'f-mat2-name','fac2')"
-            onfocus="fmAcShow('f-mat2-name','fac2')">
+            onfocus="this.select();fmAcShow('f-mat2-name','fac2')">
           <div class="mat-autocomplete hidden" id="fac2"></div>
         </div>
       </div>
@@ -295,13 +298,13 @@
 
     <div class="help-section">
       <h3>Recording a discovery</h3>
-      <p>Go to the <strong>Crafting</strong> tab, pick the two materials you used, and click <strong>Show Combinations</strong>. Find the code that matched and click <strong>Record discovery</strong> — the form opens pre-filled with the materials and code. Give the item a name and its card number, then save.</p>
+      <p>Go to the <strong>Crafting</strong> tab and pick the two materials you used — combinations appear as soon as you choose (leave Material B on <strong>All materials</strong> to see every pairing). Find the code that matched and click <strong>Record discovery</strong> — the form opens pre-filled with the materials and code. Give the item a name and its card number, then save.</p>
       <p>You can also add a recipe manually from any tab using <strong>+ Add Recipe</strong> in the header.</p>
     </div>
 
     <div class="help-section">
       <h3>Crafting codes</h3>
-      <p>Codes can be typed in shorthand: one letter for the colour followed by four digits — e.g. <strong>R1311</strong> for Red 1311. Letters: B&nbsp;=&nbsp;Blue, R&nbsp;=&nbsp;Red, Y&nbsp;=&nbsp;Yellow, P&nbsp;=&nbsp;Purple, G&nbsp;=&nbsp;Grey, Gn&nbsp;=&nbsp;Green, O&nbsp;=&nbsp;Orange. Separate multiple codes with commas or spaces.</p>
+      <p>Codes can be typed in shorthand: one letter for the colour followed by four digits — e.g. <strong>R1311</strong> for Red 1311. Letters: B&nbsp;=&nbsp;Blue, R&nbsp;=&nbsp;Red, Y&nbsp;=&nbsp;Yellow, P&nbsp;=&nbsp;Purple, G&nbsp;=&nbsp;Grey, Gn&nbsp;=&nbsp;Green, O&nbsp;=&nbsp;Orange, S&nbsp;=&nbsp;Silver. Separate multiple codes with commas or spaces.</p>
     </div>
 
     <div class="help-section">
@@ -309,8 +312,21 @@
       <ul>
         <li><span class="help-swatch" style="background:var(--discovered-bg);border-color:var(--discovered-border)"></span><strong>Green</strong> — item already discovered with this combination</li>
         <li><span class="help-swatch" style="background:var(--nothing-bg);border-color:var(--nothing-border)"></span><strong>Terracotta</strong> — tried this code, nothing crafted</li>
+        <li><span class="help-swatch" style="background:var(--discovered-bg);border-color:var(--discovered-border);border-style:dashed"></span><strong>Dashed green</strong> — inferred: this code is recorded on a recipe, so this combination should craft the same item</li>
+        <li><span class="help-swatch" style="background:var(--prov-bg);border-color:var(--prov-border)"></span><strong>Lavender</strong> — unverified code from an imported community file</li>
         <li><span class="help-swatch" style="background:var(--ash);border-color:var(--smoke)"></span><strong>Beige</strong> — not yet tried</li>
       </ul>
+    </div>
+
+    <div class="help-section">
+      <h3>Inferred combinations</h3>
+      <p>The codex maps each code to its result, and codes come entirely from the visible pips — so materials that share the same edge pips are interchangeable. When a computed code matches one already recorded on a recipe, the Crafting tab shows a dashed-green <strong>Inferred</strong> card: tap <strong>Add to recipe</strong> to attach the combination. <strong>Infer Combinations</strong> on the Recipes tab does this in bulk for every recorded code. Inferred combinations are labelled on the recipe card and can be removed with ×.</p>
+    </div>
+
+    <div class="help-section">
+      <h3>Unverified imported codes</h3>
+      <p>Use <strong>Import Codes CSV</strong> to load community crafting-code files (rows of <em>Code;Flavor Text;Game Text;Item Name</em>; the pip colour is read from the filename). These come from an unverified source, so only the code and the item card ID are shown — the item name and text stay hidden behind <strong>Reveal spoiler</strong>. When you craft the code at the table, hit <strong>Confirm</strong>: the recipe form opens pre-filled, and saving it replaces the unverified entry with a verified recipe.</p>
+      <p>Rows named <em>None</em> are community-reported dead-ends. They show as "reported as nothing crafted", with the flavor hint (which often nudges you toward the correct recipe) behind <strong>Reveal hint</strong>. Use the <strong>Nothing</strong> button to record it as a verified dead-end once tried at the table.</p>
     </div>
 
     <div class="help-section">
@@ -321,12 +337,29 @@
     </div>
 
     <div class="help-section">
+      <h3>Journal tabs</h3>
+      <p><strong>Culture</strong> — tribe name, structures, mantle powers, knowledge cards, taboos, pigments. <strong>Behemoths</strong> — each with lair hex, demeanor, and revealed secrets. <strong>Challenges</strong> — record grouped by epoch, newest first. <strong>Looming</strong> — upcoming challenges in priority order (reorder with ▲▼). <strong>Investigations</strong> — omens and findings. <strong>Notes</strong> — free-form named pages. Everything is saved locally, included in Export JSON, and merged through Drive Sync like recipes.</p>
+    </div>
+
+    <div class="help-section">
       <h3>Sharing with the table</h3>
       <p>Use <strong>Export JSON</strong> to save your current data, then share the file. Others import it with <strong>Import JSON</strong> — choose <strong>Merge</strong> to combine with their existing data, or <strong>Overwrite</strong> to replace it entirely.</p>
     </div>
 
     <div class="modal-actions">
       <button class="btn btn-primary" onclick="closeHelp()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- JOURNAL ENTRY MODAL (shared by Culture / Behemoths / Challenges / Looming / Investigations / Notes) -->
+<div class="modal-overlay hidden" id="je-overlay" onclick="outsideClose(event,'je-overlay')">
+  <div class="modal" style="max-width:520px">
+    <h2 id="je-title">Add Entry</h2>
+    <div id="je-fields"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeJournalEntry()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveJournalEntry()">Save</button>
     </div>
   </div>
 </div>

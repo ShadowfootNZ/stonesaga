@@ -1,8 +1,9 @@
-# Stonesaga — Crafting Journal
+# Stonesaga — Campaign Journal
 
 A browser-based campaign journal for the Stonesaga board game. Records discovered
-recipes, computes possible crafting codes from token pip data, and lets a whole table
-share a common journal via JSON export/import or Google Drive sync.
+recipes, computes possible crafting codes from token pip data, tracks the wider
+campaign (culture, behemoths, challenges, investigations, notes), and lets a whole
+table share a common journal via JSON export/import or Google Drive sync.
 
 No build step, no dependencies, no server. It's a static site — open `index.html` or
 host it on GitHub Pages.
@@ -28,18 +29,38 @@ up **Drive Sync** (see below) so the group pulls and pushes to a shared file aut
 
 ## Features
 
-- **Combination Explorer** — pick one or two materials and see every valid crafting code,
-  flagged as discovered, dead-end, or unknown. Selecting an unprocessed material also
-  considers its processed form.
+- **Combination Explorer** — pick one or two materials from the dropdowns and see every
+  valid crafting code, flagged as discovered, dead-end, inferred, unverified, or unknown.
+  Selecting an unprocessed material also considers its processed form. A material may be
+  paired with itself (two tokens at independent rotations). Materials whose inner edge is
+  always a null icon (e.g. Feather, Tooth (drilled)) can only sit in the Material B slot
+  and are excluded from Material A.
 - **Recipes** — record discovered items with their item-card number, all crafting codes,
-  the two source materials, and notes.
+  the two source materials, and notes. A recipe can carry alternate material combinations:
+  when a newly found code already belongs to a recipe, the app offers to attach the new
+  pair instead of duplicating the item.
+- **Inferred combinations** — crafting codes come entirely from the visible edge pips, so
+  materials sharing an edge-pair are interchangeable (e.g. Bone ⇄ Wood, Guts (cured) ⇄ Silk).
+  When a computed code matches one already recorded, the Explorer shows a dashed-green
+  *Inferred* card with one-tap **Add to recipe**; **Infer Combinations** on the Recipes tab
+  sweeps every recorded code and attaches all equivalent pairs, marked *inferred* until
+  crafted for real.
+- **Journal tabs** — Culture (tribe name, structures, mantle powers, knowledge cards,
+  taboos, pigments), Behemoths (lair hex, demeanor, revealed secrets), Challenge Record
+  (grouped by epoch, newest first), Looming Challenges (re-orderable), Investigations,
+  and free-form Notes pages. All of it exports, imports, and Drive-syncs with the rest.
+- **Import Codes CSV** — pre-load community crafting-code files (`Code;Flavor;Game Text;Item Name`,
+  pip colour taken from the filename). Entries are treated as unverified: the code and item
+  card ID are shown, but names and text stay behind a *Reveal spoiler* toggle until the card
+  is confirmed at the table. Rows named `None` are community-reported dead-ends with the
+  hint text behind *Reveal hint*.
 - **Materials** — browse all materials in a card grid with pip marks and category filter.
   Add custom materials discovered during play; they are stored in the export JSON so they
   travel with the group's data.
 - **Token pip data** — pip marks for all built-in materials are included. Load a custom
   JSON file to override built-in data or add materials not yet in the app.
 - **Code shorthand** — type codes like `B2132, R4210`
-  (B=Blue, R=Red, Y=Yellow, P=Purple, G=Grey, Gn=Green, O=Orange + four digits).
+  (B=Blue, R=Red, Y=Yellow, P=Purple, G=Grey, Gn=Green, O=Orange, S=Silver + four digits).
 - **Export / Import** — timestamped JSON with merge or overwrite on import. The export
   file carries the group's Drive file ID so it connects new devices automatically.
 - **Drive Sync** — pull the latest state from a shared Drive file, resolve any conflicts
@@ -75,6 +96,16 @@ in the last column.
 
 Token order matters — A-left/B-right and B-left/A-right are distinct combinations.
 
+Because the null icon can never sit on an inner edge, a material qualifies as the left
+token (Material A) only if some rotation gives it a non-null right edge. A material may
+be paired with itself: the two physical tokens rotate independently, so e.g.
+Fiber (woven) × Fiber (woven) yields six distinct codes.
+
+The codex maps each code to its result, and the code depends only on the visible pips —
+so materials with identical edge-pairs craft identical results. With the base material
+set: Bone ⇄ Wood and Guts (cured) ⇄ Silk are fully interchangeable, and Fiber (woven)
+matches Guts (cured)/Silk on their Yellow 1/Blue 1 edges.
+
 ## Token data format
 
 Pip data for all materials listed in [Materials](#materials) is built in — no file needed
@@ -96,7 +127,7 @@ yet in the app.
 
 Each material maps to a list of valid orientations (only orientations with a non-null left
 edge are included). Each orientation is `[leftColour, leftCount, rightColour, rightCount]`.
-Use `null` for a null icon (count `0`). Pip colours: Blue, Red, Yellow, Purple, Grey, Green, Orange.
+Use `null` for a null icon (count `0`). Pip colours: Blue, Red, Yellow, Purple, Grey, Green, Orange, Silver.
 
 ## Adding materials
 
