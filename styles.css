@@ -162,8 +162,11 @@ main{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:2rem 1.5
 .combo-card.state-inferred{background:var(--discovered-bg);border:2px dashed var(--discovered-border);}
 .status-badge.inferred{border-style:dashed;border-color:var(--discovered-border);color:var(--discovered-text);}
 
-.recipe-materials-alt{opacity:.85;}
-.alt-pair-label{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--flint);}
+.alt-pair-group-title{font-size:.68rem;letter-spacing:.09em;text-transform:uppercase;color:var(--flint);margin:.55rem 0 .3rem;}
+.recipe-materials-alt{opacity:.9;flex-wrap:nowrap;gap:.45rem;margin-bottom:.4rem;min-width:0;}
+.recipe-materials-alt.is-inferred{border-left:3px dashed var(--discovered-border);padding-left:.5rem;}
+.recipe-materials-alt .material-tag{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:16rem;}
+.alt-pair-plus{color:var(--flint);flex:0 0 auto;}
 .alt-pair-remove{background:none;border:none;color:var(--flint);cursor:pointer;font-size:.95rem;padding:0 .2rem;line-height:1;}
 .alt-pair-remove:hover{color:var(--nothing-text);}
 

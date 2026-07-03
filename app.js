@@ -487,6 +487,18 @@ function renderJournal(){
   }
   grid.innerHTML=list.map(r=>{
     const chips=(r.codes||[]).map(c=>`<span class="recipe-code">${pipHtml(c.color)} ${esc(c.color)} ${esc(c.digits)}</span>`).join('');
+    const altPairs=(r.altPairs||[]).map((p,i)=>({p,i}));
+    const alsoPairs=altPairs.filter(x=>!x.p.inferred);
+    const inferredPairs=altPairs.filter(x=>x.p.inferred);
+    const altPairRows=(items,cls)=>items.map(({p,i})=>`<div class="recipe-materials recipe-materials-alt ${cls}">
+        <span class="material-tag ${p.mat1Cat||'unknown'}" title="${esc(p.mat1Name||'?')}">${esc(p.mat1Name||'?')}</span>
+        <span class="alt-pair-plus">+</span>
+        <span class="material-tag ${p.mat2Cat||'unknown'}" title="${esc(p.mat2Name||'?')}">${esc(p.mat2Name||'?')}</span>
+        <button class="alt-pair-remove" onclick="removeAltPair('${r.id}',${i})" title="Remove this combination">×</button>
+      </div>`).join('');
+    const altPairGroup=(label,items,cls)=>items.length
+      ? `<div class="alt-pair-group-title">${label}</div>${altPairRows(items,cls)}`
+      : '';
     return `<div class="recipe-card">
       <div class="recipe-card-header">
         <div class="recipe-name">${esc(r.name)}</div>
@@ -497,13 +509,8 @@ function renderJournal(){
         <span style="color:var(--flint)">+</span>
         <span class="material-tag ${r.mat2Cat||'unknown'}">${esc(r.mat2Name||'?')}</span>
       </div>
-      ${(r.altPairs||[]).map((p,i)=>`<div class="recipe-materials recipe-materials-alt">
-        <span class="alt-pair-label">${p.inferred?'inferred':'also'}</span>
-        <span class="material-tag ${p.mat1Cat||'unknown'}">${esc(p.mat1Name||'?')}</span>
-        <span style="color:var(--flint)">+</span>
-        <span class="material-tag ${p.mat2Cat||'unknown'}">${esc(p.mat2Name||'?')}</span>
-        <button class="alt-pair-remove" onclick="removeAltPair('${r.id}',${i})" title="Remove this combination">×</button>
-      </div>`).join('')}
+      ${altPairGroup('Also crafts with',alsoPairs,'')}
+      ${altPairGroup('Inferred pairings',inferredPairs,'is-inferred')}
       <div class="code-chips">${chips||'<span style="color:var(--flint);font-size:.8rem">No codes recorded</span>'}</div>
       ${r.notes?`<div class="recipe-notes">${esc(r.notes)}</div>`:''}
       <div class="card-actions">
