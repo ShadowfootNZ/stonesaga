@@ -2486,6 +2486,7 @@ function openCaveEditor(id){
   document.getElementById('cw-mark').innerHTML='<option value="">Copy a mark…</option>'+
     MARKS.map(m=>`<option value="${esc(m)}"${m===cwState.mark?' selected':''}>${esc(m)}</option>`).join('');
   cwInitCanvas();
+  document.body.classList.add('cave-editor-open');
   document.getElementById('cave-overlay').classList.remove('hidden');
   cwFitCanvas();
   cwRenderTools(); cwRender();
@@ -2495,6 +2496,7 @@ function closeCaveEditor(){
   if(!cwState) return;
   if(cwState.dirty&&!confirm('Discard changes to this drawing?')) return;
   document.getElementById('cave-overlay').classList.add('hidden');
+  document.body.classList.remove('cave-editor-open');
   cwState=null;
 }
 
@@ -2509,6 +2511,7 @@ function saveCaveDrawing(){
     caveWall.push({id:genId(),name,strokes:cwState.strokes,addedAt:Date.now(),updatedAt:Date.now()});
   }
   document.getElementById('cave-overlay').classList.add('hidden');
+  document.body.classList.remove('cave-editor-open');
   cwState=null;
   save(); renderCaveWall();
 }
@@ -2617,19 +2620,32 @@ function cwPointerMove(e){
 
 function cwPointerUp(e){
   if(!cwState?.cur||e.pointerId!==cwState.pointerId) return;
+  e.preventDefault();
   cwState.strokes.push(cwState.cur);
+  const svg=document.getElementById('cw-canvas');
+  try{svg.releasePointerCapture(e.pointerId);}catch{/* already released / unsupported */}
   cwState.cur=null; cwState.pointerId=null;
   cwState.redo=[]; cwState.dirty=true;
   cwRender();
 }
 
+function cwPreventCanvasGesture(e){
+  if(cwState) e.preventDefault();
+}
+
 function cwInitCanvas(){
   if(cwCanvasReady) return;
   const svg=document.getElementById('cw-canvas');
+  const wrap=document.getElementById('cw-canvas-wrap');
   svg.addEventListener('pointerdown',cwPointerDown);
   svg.addEventListener('pointermove',cwPointerMove);
   svg.addEventListener('pointerup',cwPointerUp);
   svg.addEventListener('pointercancel',cwPointerUp); // commit what we have on system-cancel
+  const opts={passive:false};
+  svg.addEventListener('touchstart',cwPreventCanvasGesture,opts);
+  svg.addEventListener('touchmove',cwPreventCanvasGesture,opts);
+  wrap.addEventListener('touchstart',cwPreventCanvasGesture,opts);
+  wrap.addEventListener('touchmove',cwPreventCanvasGesture,opts);
   cwCanvasReady=true;
 }
 
