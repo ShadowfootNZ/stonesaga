@@ -48,7 +48,7 @@ header .subtitle{font-size:.75rem;color:var(--flint);letter-spacing:.15em;text-t
 .tab-panel{display:none;}
 .tab-panel.active{display:block;}
 
-/* Journal sub-tabs */
+/* Nested sub-tabs */
 .subtabs{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:1.2rem;padding-bottom:.7rem;border-bottom:1px solid var(--smoke);}
 .subtab-btn{font-family:'Cinzel',serif;font-size:.72rem;font-weight:600;letter-spacing:.06em;padding:.35rem .8rem;border:1px solid var(--smoke);background:var(--ash);color:var(--flint);cursor:pointer;text-transform:uppercase;transition:all .15s;}
 .subtab-btn:hover{color:var(--ochre);border-color:var(--ochre);}

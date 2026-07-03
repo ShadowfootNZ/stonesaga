@@ -43,17 +43,10 @@
 
 <main>
   <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('explorer',this)">Crafting</button>
-    <button class="tab-btn" onclick="switchTab('journal',this)">Recipes</button>
-    <button class="tab-btn" onclick="switchTab('materials',this)">Materials</button>
+    <button class="tab-btn active" onclick="switchTab('workshop',this)">Workshop</button>
     <button class="tab-btn" onclick="switchTab('journal-group',this)">Journal</button>
     <button class="tab-btn" onclick="switchTab('cave-wall',this)">Cave Wall</button>
     <!-- Deferred tab (see app.js TODO block): Valley Map -->
-  </div>
-
-  <div class="stats-bar">
-    <div class="stat"><div class="stat-value" id="stat-total">0</div><div class="stat-label">Recipes</div></div>
-    <div class="stat"><div class="stat-value" id="stat-nothing">0</div><div class="stat-label">Dead ends</div></div>
   </div>
 
   <!-- TODO: VALLEY MAP tab-panel (deferred)
@@ -118,8 +111,21 @@
     </div>
   </div>
 
-  <!-- JOURNAL -->
-  <div class="tab-panel" id="tab-journal">
+  <!-- WORKSHOP (Crafting / Recipes / Materials) -->
+  <div class="tab-panel active" id="tab-workshop">
+    <div class="subtabs" id="workshop-subtabs">
+      <button class="subtab-btn active" data-sub="explorer" onclick="switchWorkshopTab('explorer')">Crafting</button>
+      <button class="subtab-btn" data-sub="recipes" onclick="switchWorkshopTab('recipes')">Recipes</button>
+      <button class="subtab-btn" data-sub="materials" onclick="switchWorkshopTab('materials')">Materials</button>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat"><div class="stat-value" id="stat-total">0</div><div class="stat-label">Recipes</div></div>
+      <div class="stat"><div class="stat-value" id="stat-nothing">0</div><div class="stat-label">Dead ends</div></div>
+    </div>
+
+  <!-- RECIPES -->
+  <div class="subtab-panel" id="tab-recipes">
     <div class="controls">
       <button class="btn btn-primary" onclick="openModal()">+ Add Recipe</button>
       <input class="search-box" type="text" placeholder="Search by item name, code…" oninput="renderJournal()" id="search">
@@ -141,7 +147,7 @@
   </div>
 
   <!-- MATERIALS -->
-  <div class="tab-panel" id="tab-materials">
+  <div class="subtab-panel" id="tab-materials">
     <div class="mat-tab-controls">
       <input class="search-box" type="text" id="mat-search" placeholder="Search materials…" oninput="renderMaterials()">
       <select class="mat-cat-select" id="mat-cat-filter" onchange="renderMaterials()">
@@ -153,7 +159,7 @@
   </div>
 
   <!-- EXPLORER -->
-  <div class="tab-panel active" id="tab-explorer">
+  <div class="subtab-panel active" id="tab-explorer">
     <div id="token-data-notice"></div>
     <div class="explorer-controls">
     <div class="explorer-top">
@@ -177,6 +183,7 @@
     </div>
     </div>
     <div id="explorer-output"></div>
+  </div>
   </div>
 </main>
 
@@ -318,8 +325,8 @@
 
     <div class="help-section">
       <h3>Recording a discovery</h3>
-      <p>Go to the <strong>Crafting</strong> tab and pick the two materials you used — combinations appear as soon as you choose (leave Material B on <strong>All materials</strong> to see every pairing). Find the code that matched and click <strong>Record discovery</strong> — the form opens pre-filled with the materials and code. Give the item a name and its card number, then save.</p>
-      <p>You can also add a recipe manually with <strong>+ Add Recipe</strong> on the Recipes tab (or press <strong>n</strong>).</p>
+      <p>Go to <strong>Workshop</strong> → <strong>Crafting</strong> and pick the two materials you used — combinations appear as soon as you choose (leave Material B on <strong>All materials</strong> to see every pairing). Find the code that matched and click <strong>Record discovery</strong> — the form opens pre-filled with the materials and code. Give the item a name and its card number, then save.</p>
+      <p>You can also add a recipe manually with <strong>+ Add Recipe</strong> in <strong>Workshop</strong> → <strong>Recipes</strong> (or press <strong>n</strong>).</p>
     </div>
 
     <div class="help-section">
@@ -358,7 +365,7 @@
 
     <div class="help-section">
       <h3>Journal tab</h3>
-      <p>The <strong>Journal</strong> tab gathers the campaign record into sub-tabs. <strong>Culture</strong> — tribe name, structures, mantle powers, knowledge cards, taboos, pigments. <strong>Behemoths</strong> — each with lair hex, demeanor, and revealed secrets. <strong>Challenges</strong> — record grouped by epoch, newest first. <strong>Looming</strong> — upcoming challenges in priority order (reorder with ▲▼). <strong>Investigations</strong> — omens and findings. <strong>Cave Wall</strong> — draw pictographic records with a finger, stylus, or Apple Pencil using the six pencils from the game box; drawings appear directly on the cave wall in the order they were painted, and sync with the group. To copy a mark, pick it from <strong>Copy a mark…</strong> in the editor — it pre-fills the name and lays a ghosted template on the canvas to trace over (the template itself is never saved). <strong>Notes</strong> — free-form named pages. Everything is saved locally, included in Export JSON, and merged through Drive Sync like recipes.</p>
+      <p>The <strong>Journal</strong> tab gathers the campaign record into sub-tabs. <strong>Culture</strong> — tribe name, structures, mantle powers, knowledge cards, taboos, pigments. <strong>Behemoths</strong> — each with lair hex, demeanor, and revealed secrets. <strong>Challenges</strong> — record grouped by epoch, newest first. <strong>Looming</strong> — upcoming challenges in priority order (reorder with ▲▼). <strong>Investigations</strong> — omens and findings. <strong>Notes</strong> — free-form named pages. The <strong>Cave Wall</strong> tab draws pictographic records with a finger, stylus, or Apple Pencil using the six pencils from the game box. Everything is saved locally, included in Export JSON, and merged through Drive Sync like recipes.</p>
     </div>
 
     <div class="help-section">

@@ -475,12 +475,21 @@ function switchTab(id,btn){
   document.querySelectorAll('.tabs .tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+id).classList.add('active');
   btn.classList.add('active');
-  // The recipe/dead-end counters only apply to the crafting-side tabs
-  document.querySelector('.stats-bar').style.display=['explorer','journal','materials'].includes(id)?'':'none';
-  if(id==='explorer') renderTokenNotice();
-  if(id==='materials') renderMaterials();
+  if(id==='workshop') switchWorkshopTab(workshopSubtab); // reopen where the crafter left off
   if(id==='cave-wall') renderCaveWall();
   if(id==='journal-group') switchJournalTab(journalSubtab); // reopen where the reader left off
+}
+
+// Crafting, Recipes, and Materials live as sub-tabs under Workshop so the
+// top-level navigation stays compact.
+let workshopSubtab='explorer';
+const WORKSHOP_TAB_RENDER={explorer:renderTokenNotice,recipes:renderJournal,materials:renderMaterials};
+
+function switchWorkshopTab(id){
+  workshopSubtab=id;
+  document.querySelectorAll('#tab-workshop .subtab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+id));
+  document.querySelectorAll('#workshop-subtabs .subtab-btn').forEach(b=>b.classList.toggle('active',b.dataset.sub===id));
+  (WORKSHOP_TAB_RENDER[id]||renderTokenNotice)();
 }
 
 // Culture / Behemoths / Challenges / Looming / Investigations / Notes live as
