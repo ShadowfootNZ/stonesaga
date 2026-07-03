@@ -172,6 +172,41 @@ main{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:2rem 1.5
 .outcome-badge.lost{border-color:var(--nothing-border);color:var(--nothing-text);}
 .outcome-badge.fled{border-color:var(--smoke);color:var(--flint);}
 .looming-list{display:flex;flex-direction:column;gap:.8rem;max-width:760px;}
+
+/* Cave Wall — the gallery sits on the torch-lit stone; drawings are transparent
+   so strokes read as painted directly on the rock. A faint parchment wash keeps
+   dark pencils legible in the image's shadowed corners. */
+#tab-cave-wall{
+  background:linear-gradient(rgba(239,232,218,.14),rgba(239,232,218,.14)),
+    url('assets/images/cave-wall-bg.webp') center/cover no-repeat #9f8d76;
+  border:1px solid var(--smoke);
+  box-shadow:inset 0 0 40px rgba(26,18,16,.35),0 1px 4px rgba(44,29,28,.15);
+  padding:1.2rem;
+  min-height:55vh;
+}
+.cave-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:.9rem;}
+.cave-card{display:flex;flex-direction:column;gap:.2rem;align-items:center;}
+.cave-card-name{font-family:'Cinzel',serif;font-weight:600;font-size:.72rem;color:var(--chalk);text-shadow:0 1px 3px rgba(250,246,239,.55);display:flex;align-items:center;gap:.25rem;text-align:center;}
+.cave-del{background:none;border:none;color:var(--flint);cursor:pointer;font-size:.95rem;padding:0 .15rem;line-height:1;}
+.cave-del:hover{color:var(--nothing-text);}
+.cave-thumb{cursor:pointer;aspect-ratio:1/1;width:100%;}
+.cave-thumb svg{width:100%;height:100%;display:block;}
+.cave-mark-select{width:auto;max-width:190px;}
+#cave-overlay{padding:0;align-items:stretch;justify-content:stretch;}
+.cave-editor{width:100%;height:100vh;height:100dvh;background:var(--cave);display:flex;flex-direction:column;gap:.6rem;padding:.7rem;user-select:none;-webkit-user-select:none;}
+.cave-editor-top{display:flex;gap:.6rem;align-items:center;}
+.cave-editor-top .form-control{flex:1;min-width:0;}
+.cave-canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;}
+#cw-canvas{background:var(--ash);border:1px solid var(--smoke);touch-action:none;box-shadow:0 1px 4px rgba(44,29,28,.12);}
+.cave-editor-tools{display:flex;gap:1rem;align-items:center;flex-wrap:wrap;justify-content:center;}
+.cave-palette{display:flex;gap:.5rem;}
+.cave-swatch{width:34px;height:34px;border:2px solid transparent;border-radius:50%;cursor:pointer;padding:0;}
+.cave-swatch.active{border-color:var(--ochre);box-shadow:0 0 0 2px var(--cave),0 0 0 4px var(--ochre);}
+.cave-widths{display:flex;gap:.4rem;}
+.cave-width-btn{width:34px;height:34px;background:var(--ash);border:1px solid var(--smoke);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;}
+.cave-width-btn.active{border-color:var(--ochre);border-width:2px;}
+.cave-width-dot{border-radius:50%;display:block;}
+.cave-editor-actions{display:flex;gap:.4rem;}
 .looming-card{flex-direction:row;gap:.9rem;}
 .looming-order{display:flex;flex-direction:column;gap:.3rem;}
 .looming-main{flex:1;display:flex;flex-direction:column;gap:.45rem;}

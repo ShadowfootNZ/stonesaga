@@ -9,18 +9,35 @@
 //   - Store hex annotations in the save JSON under `valleyMap`.
 //   - Behemoth `lairHex` fields become cross-links to hex IDs once this exists.
 //
-// ── CAVE WALL ──────────────────────────────────────
-// TODO: Add a Cave Wall section for pictographic records.
-//   - Display a grid/gallery of named cave drawings.
-//   - Each entry has a name (always recorded) and an optional image.
-//   - Support uploading an image file (photo of a physical drawing).
-//   - Consider an in-browser SVG drawing canvas for simple silhouette-style
-//     figures (think cave-painting style: single stroke, filled shapes).
-//     If an Apple Pencil / iPad + web app is the target, a basic PointerEvent
-//     canvas with SVG path capture could work without a native app.
-//   - Store image references as base64 data URIs or as filenames with a
-//     side-channel image store (IndexedDB is better than localStorage for blobs).
-//   Store as `caveWall: [{ name, svgData|imageDataUrl, addedAt }]` in the save JSON.
+// ── CAVE WALL (phase 4b) ───────────────────────────
+// TODO: Photo upload for the Cave Wall — attach a photo of a physical drawing
+//   to an entry. Downscale to ~800px client-side; store the blob in IndexedDB
+//   (local-only) with the name/metadata syncing as usual. Drawing canvas itself
+//   shipped 2026-07-03 (vector strokes in the save JSON).
+//
+// ── STORAGE SIZE GUARD ─────────────────────────────
+// TODO: Add a save-size check. localStorage is ~5MB and save() currently
+//   swallows quota errors silently — data loss without a symptom. Measure the
+//   JSON size on save, warn visibly when approaching the limit (and surface
+//   quota exceptions), and show the current size somewhere (e.g. Drive modal).
+//
+// ── DRIVE IMAGE UPLOADS ────────────────────────────
+// TODO: Upload images (cave wall photos, future map scans) to Google Drive as
+//   separate files via drive-sync.gs instead of inlining them in the JSON —
+//   keeps the save small while letting the whole group see images. Store the
+//   Drive file id in the entry; fetch on demand; cache locally.
+//
+// ── IMPORT CONFLICT REVIEW ─────────────────────────
+// TODO: Let the user review and resolve each import conflict individually
+//   instead of all-or-nothing Merge/Overwrite. Per conflict: pick yours vs
+//   theirs, and for name conflicts allow editing the recipe name directly in
+//   the conflict list before applying.
+//
+// ── CODEX ERRATA REVIEW ────────────────────────────
+// TODO: Review content derived from the Codex — it is v1 and needs the
+//   published errata applied to be v2. Check the marks reference sheet, the
+//   provisional crafting CSVs, and any card IDs/text imported from it, and
+//   correct anything the errata changed.
 //
 // ── APPLE HOME SCREEN ICON ─────────────────────────
 // TODO (ON HOLD — icon artwork still to be designed):
@@ -133,6 +150,7 @@ let challengeRecord   = [];   // [{id,epoch,name,cardId,outcome,notes,updatedAt}
 let loomingChallenges = [];   // [{id,name,cardId,prepareByEpoch,notes,order,updatedAt}]
 let investigations    = [];   // [{id,omen,cardId,notes,updatedAt}]
 let notePages         = [];   // [{id,title,body,updatedAt}]
+let caveWall          = [];   // [{id,name,strokes:[{c,w,pts:[x,y,...]}],addedAt,updatedAt}] — vector drawings in a 1000×1000 space
 let provisionalCodes  = {};   // {"Blue 1111": {cardId,name,flavor,gameText,source,updatedAt}} — unverified external data
 
 function emptyCulture(){
@@ -352,7 +370,7 @@ function switchTab(id,btn){
   btn.classList.add('active');
   if(id==='explorer') renderTokenNotice();
   if(id==='materials') renderMaterials();
-  const journalTabs={culture:renderCulture,behemoths:renderBehemoths,challenges:renderChallenges,looming:renderLooming,investigations:renderInvestigations,notes:renderNotes};
+  const journalTabs={culture:renderCulture,behemoths:renderBehemoths,challenges:renderChallenges,looming:renderLooming,investigations:renderInvestigations,'cave-wall':renderCaveWall,notes:renderNotes};
   if(journalTabs[id]) journalTabs[id]();
 }
 
@@ -1155,7 +1173,7 @@ function save() {
   lastUpdated = new Date().toISOString();
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     recipes, nullCodes, tokenData, customMaterials,
-    culture, behemoths, challengeRecord, loomingChallenges, investigations, notePages, provisionalCodes,
+    culture, behemoths, challengeRecord, loomingChallenges, investigations, notePages, caveWall, provisionalCodes,
     lastUpdated, driveFileId, driveLastSynced,
   }));
 }
@@ -1181,6 +1199,7 @@ function buildExportPayload() {
     loomingChallenges,
     investigations,
     notePages,
+    caveWall,
     provisionalCodes,
     driveFileId,
   };
@@ -1188,7 +1207,8 @@ function buildExportPayload() {
 
 function journalEntryCount(d) {
   return (d.behemoths?.length||0) + (d.challengeRecord?.length||0) + (d.loomingChallenges?.length||0)
-       + (d.investigations?.length||0) + (d.notePages?.length||0) + (d.provisionalCodes ? Object.keys(d.provisionalCodes).length : 0)
+       + (d.investigations?.length||0) + (d.notePages?.length||0) + (d.caveWall?.length||0)
+       + (d.provisionalCodes ? Object.keys(d.provisionalCodes).length : 0)
        + (d.culture ? (d.culture.tribeName?1:0) + ['structures','mantlePowers','knowledgeCards','taboos','pigments']
            .reduce((n,k)=>n+(d.culture[k]?.length||0),0) : 0);
 }
@@ -1356,6 +1376,7 @@ function doImport(mode) {
     loomingChallenges = mergeById(loomingChallenges, meta.loomingChallenges);
     investigations    = mergeById(investigations,    meta.investigations);
     notePages         = mergeById(notePages,         meta.notePages);
+    caveWall          = mergeById(caveWall,          meta.caveWall);
     provisionalCodes  = mergeByKey(provisionalCodes, meta.provisionalCodes);
   } else {
     recipes         = incoming;
@@ -1367,6 +1388,7 @@ function doImport(mode) {
     loomingChallenges = meta.loomingChallenges || [];
     investigations    = meta.investigations    || [];
     notePages         = meta.notePages         || [];
+    caveWall          = meta.caveWall          || [];
     provisionalCodes  = meta.provisionalCodes  || {};
   }
   if (!driveFileId && inDriveId) driveFileId = inDriveId;
@@ -1443,6 +1465,7 @@ function load() {
       loomingChallenges = d.loomingChallenges || [];
       investigations    = d.investigations    || [];
       notePages         = d.notePages         || [];
+      caveWall          = d.caveWall          || [];
       provisionalCodes  = d.provisionalCodes  || {};
       lastUpdated     = d.lastUpdated     || null;
       driveFileId     = d.driveFileId     || null;
@@ -1928,6 +1951,244 @@ function renderInvestigations(){
   :'<p class="journal-empty">No investigations recorded yet.</p>';
 }
 
+// ── Cave Wall ──────────────────────────────────────
+// Vector cave drawings. Strokes are captured with PointerEvents in a fixed
+// 1000×1000 logical space and rendered as SVG, so drawings are a few KB of
+// JSON that export, merge, and Drive-sync like every other section.
+// Stroke: {c: pencil index, w: width, pts: [x,y,x,y,...] integer coords}.
+const CAVE_PENCILS=[
+  {name:'Black',      hex:'#2c1d1c'},
+  {name:'Blue',       hex:'#4a90c4'},
+  {name:'Red',        hex:'#c04a4a'},
+  {name:'Dark Green', hex:'#3d6b47'},
+  {name:'Orange',     hex:'#c47a3a'},
+  {name:'Silver',     hex:'#9a9ea6'},
+];
+const CAVE_WIDTHS=[6,14,28]; // stroke widths in logical units
+const CAVE_SIZE=1000;
+
+// The full mark list from the game's reference sheet (Codex p.114); every name
+// has a tracing image at assets/images/marks/<Name>.webp. Names added here
+// without an image still work — they just pre-fill the drawing name.
+const MARKS=[
+  'Arrival', 'Battle', 'Beastslayer', 'Behemoth’s Blood', 'BH1', 'BH2',
+  'BH3', 'BH4', 'Blackened Sky', 'Blaze', 'Bond', 'Broken Earth',
+  'Caravan', 'Caution', 'City', 'Conclusion', 'Coral', 'Cultivation',
+  'Defender', 'Discovery', 'Doom', 'Exodus', 'Familiar', 'Feast',
+  'Filch', 'Glacier', 'Growth', 'Harrowing', 'Herbalism', 'Hold',
+  'Hunter', 'Ice', 'Mediator', 'Misfortune', 'Mists', 'Moonblood',
+  'Mount', 'Mystery', 'Mystic', 'Orrox', 'Plague', 'Plenty',
+  'Prophecy', 'Protector', 'Rebellion', 'Relic', 'Rescuer', 'Schism',
+  'Scout', 'Scribe', 'Seeker', 'Skyreach Plateau', 'Songweaver', 'Starlit Sea',
+  'Storyteller', 'Taboo', 'Tangle', 'Underworld', 'Verdant Vale', 'Volcanic Wastes',
+  'Wanderer', 'Wrath',
+];
+function markImagePath(name){return encodeURI(`assets/images/marks/${name}.webp`);}
+
+let cwState=null;       // {id,strokes,cur,pointerId,colorIdx,widthIdx,redo,penSeen,dirty} while editor open
+let cwCanvasReady=false;
+
+// Smooth a flat point list into an SVG path (quadratics through midpoints).
+function cwStrokePath(pts){
+  if(pts.length<2) return '';
+  if(pts.length===2) return `M${pts[0]} ${pts[1]} l.01 0`; // dot via round linecap
+  let d=`M${pts[0]} ${pts[1]}`;
+  if(pts.length===4) return d+` L${pts[2]} ${pts[3]}`;
+  for(let i=2;i<pts.length-2;i+=2)
+    d+=` Q${pts[i]} ${pts[i+1]} ${(pts[i]+pts[i+2])/2} ${(pts[i+1]+pts[i+3])/2}`;
+  return d+` L${pts[pts.length-2]} ${pts[pts.length-1]}`;
+}
+
+function cwStrokesInner(strokes){
+  return strokes.map(s=>
+    `<path d="${cwStrokePath(s.pts)}" stroke="${CAVE_PENCILS[s.c]?.hex||'#2c1d1c'}" stroke-width="${s.w}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`
+  ).join('');
+}
+
+function cwSvg(strokes){
+  return `<svg viewBox="0 0 ${CAVE_SIZE} ${CAVE_SIZE}" preserveAspectRatio="xMidYMid meet">${cwStrokesInner(strokes)}</svg>`;
+}
+
+function renderCaveWall(){
+  const el=document.getElementById('cave-wall-list');
+  // Creation order, oldest first — the wall fills up as the saga unfolds
+  const list=[...caveWall].sort((a,b)=>(a.addedAt||0)-(b.addedAt||0));
+  el.innerHTML=list.length?list.map(e=>`
+    <div class="cave-card">
+      <div class="cave-thumb" onclick="openCaveEditor('${e.id}')" title="Tap to edit">${cwSvg(e.strokes||[])}</div>
+      <div class="cave-card-name">${esc(e.name)}<button class="cave-del" onclick="deleteCaveDrawing('${e.id}')" title="Delete">×</button></div>
+    </div>`).join('')
+  :'<p class="journal-empty">Nothing painted on the cave wall yet.</p>';
+}
+
+function deleteCaveDrawing(id){
+  const e=caveWall.find(x=>x.id===id);
+  if(!e||!confirm(`Delete "${e.name}"?`)) return;
+  caveWall=caveWall.filter(x=>x.id!==id);
+  save(); renderCaveWall();
+}
+
+// ── Cave Wall editor ──
+function openCaveEditor(id){
+  const e=id?caveWall.find(x=>x.id===id):null;
+  if(id&&!e) return;
+  cwState={
+    id:id||null,
+    strokes:e?(e.strokes||[]).map(s=>({c:s.c,w:s.w,pts:[...s.pts]})):[],
+    cur:null, pointerId:null, colorIdx:0, widthIdx:1, redo:[], penSeen:false, dirty:false,
+    mark:(e&&MARKS.includes(e.name))?e.name:'', traceHidden:false, // re-trace when the drawing is named after a mark
+  };
+  document.getElementById('cw-name').value=e?e.name:'';
+  document.getElementById('cw-mark').innerHTML='<option value="">Copy a mark…</option>'+
+    MARKS.map(m=>`<option value="${esc(m)}"${m===cwState.mark?' selected':''}>${esc(m)}</option>`).join('');
+  cwInitCanvas();
+  document.getElementById('cave-overlay').classList.remove('hidden');
+  cwFitCanvas();
+  cwRenderTools(); cwRender();
+}
+
+function closeCaveEditor(){
+  if(!cwState) return;
+  if(cwState.dirty&&!confirm('Discard changes to this drawing?')) return;
+  document.getElementById('cave-overlay').classList.add('hidden');
+  cwState=null;
+}
+
+function saveCaveDrawing(){
+  if(!cwState) return;
+  const name=document.getElementById('cw-name').value.trim();
+  if(!name){alert('Give the drawing a name.');return;}
+  if(cwState.id){
+    const e=caveWall.find(x=>x.id===cwState.id);
+    if(e){e.name=name;e.strokes=cwState.strokes;e.updatedAt=Date.now();}
+  }else{
+    caveWall.push({id:genId(),name,strokes:cwState.strokes,addedAt:Date.now(),updatedAt:Date.now()});
+  }
+  document.getElementById('cave-overlay').classList.add('hidden');
+  cwState=null;
+  save(); renderCaveWall();
+}
+
+// Square canvas sized in JS so pointer→viewBox mapping stays a simple linear scale.
+function cwFitCanvas(){
+  const wrap=document.getElementById('cw-canvas-wrap'), svg=document.getElementById('cw-canvas');
+  if(!wrap||!svg||document.getElementById('cave-overlay').classList.contains('hidden')) return;
+  const s=Math.max(1,Math.floor(Math.min(wrap.clientWidth,wrap.clientHeight)));
+  svg.style.width=s+'px'; svg.style.height=s+'px';
+}
+window.addEventListener('resize',cwFitCanvas);
+
+function cwRenderTools(){
+  document.getElementById('cw-palette').innerHTML=CAVE_PENCILS.map((p,i)=>
+    `<button class="cave-swatch${i===cwState.colorIdx?' active':''}" style="background:${p.hex}" title="${p.name}" onclick="cwSetColor(${i})"></button>`).join('');
+  document.getElementById('cw-widths').innerHTML=CAVE_WIDTHS.map((w,i)=>
+    `<button class="cave-width-btn${i===cwState.widthIdx?' active':''}" onclick="cwSetWidth(${i})"><span class="cave-width-dot" style="width:${5+i*5}px;height:${5+i*5}px;background:${CAVE_PENCILS[cwState.colorIdx].hex}"></span></button>`).join('');
+}
+function cwSetColor(i){if(cwState){cwState.colorIdx=i;cwRenderTools();}}
+function cwSetWidth(i){if(cwState){cwState.widthIdx=i;cwRenderTools();}}
+
+// Choosing a mark pre-fills the drawing name and lays a ghosted tracing
+// underlay in the canvas. The underlay is never part of the saved drawing.
+function cwSetMark(name){
+  if(!cwState) return;
+  cwState.mark=name; cwState.traceHidden=false;
+  if(name) document.getElementById('cw-name').value=name;
+  cwRender();
+}
+
+function cwToggleTrace(){
+  if(!cwState) return;
+  cwState.traceHidden=!cwState.traceHidden;
+  cwRender();
+}
+
+// Redraw committed strokes; the in-progress stroke updates a dedicated live path.
+function cwRender(){
+  const svg=document.getElementById('cw-canvas');
+  const trace=(cwState.mark&&!cwState.traceHidden)
+    ? `<image href="${esc(markImagePath(cwState.mark))}" x="0" y="0" width="${CAVE_SIZE}" height="${CAVE_SIZE}" opacity="0.35" preserveAspectRatio="xMidYMid meet"/>`
+    : '';
+  svg.innerHTML=trace+cwStrokesInner(cwState.strokes)+'<path id="cw-live" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+  document.getElementById('cw-undo').disabled=!cwState.strokes.length;
+  document.getElementById('cw-redo').disabled=!cwState.redo.length;
+  const tbtn=document.getElementById('cw-trace-toggle');
+  tbtn.style.display=cwState.mark?'':'none';
+  tbtn.textContent=cwState.traceHidden?'Show mark':'Hide mark';
+}
+
+function cwDrawLive(){
+  const live=document.getElementById('cw-live');
+  if(!live||!cwState?.cur) return;
+  live.setAttribute('d',cwStrokePath(cwState.cur.pts));
+  live.setAttribute('stroke',CAVE_PENCILS[cwState.cur.c].hex);
+  live.setAttribute('stroke-width',cwState.cur.w);
+}
+
+function cwUndo(){if(!cwState||!cwState.strokes.length)return;cwState.redo.push(cwState.strokes.pop());cwState.dirty=true;cwRender();}
+function cwRedo(){if(!cwState||!cwState.redo.length)return;cwState.strokes.push(cwState.redo.pop());cwState.dirty=true;cwRender();}
+function cwClear(){
+  if(!cwState||!cwState.strokes.length)return;
+  if(!confirm('Clear the whole drawing?'))return;
+  cwState.redo=[];cwState.strokes=[];cwState.dirty=true;cwRender();
+}
+
+function cwPoint(e,svg){
+  const r=svg.getBoundingClientRect();
+  const x=Math.round(Math.min(CAVE_SIZE,Math.max(0,(e.clientX-r.left)/r.width*CAVE_SIZE)));
+  const y=Math.round(Math.min(CAVE_SIZE,Math.max(0,(e.clientY-r.top)/r.height*CAVE_SIZE)));
+  return [x,y];
+}
+
+// Palm rejection: once a real pen has been seen this session, ignore touch pointers.
+function cwIgnorePointer(e){
+  if(e.pointerType==='pen') cwState.penSeen=true;
+  return e.pointerType==='touch'&&cwState.penSeen;
+}
+
+function cwPointerDown(e){
+  if(!cwState||cwIgnorePointer(e)||cwState.pointerId!=null) return;
+  e.preventDefault();
+  const svg=document.getElementById('cw-canvas');
+  try{svg.setPointerCapture(e.pointerId);}catch{/* not supported / stale id */}
+  cwState.pointerId=e.pointerId;
+  const [x,y]=cwPoint(e,svg);
+  cwState.cur={c:cwState.colorIdx,w:CAVE_WIDTHS[cwState.widthIdx],pts:[x,y]};
+  cwDrawLive();
+}
+
+function cwPointerMove(e){
+  if(!cwState?.cur||e.pointerId!==cwState.pointerId) return;
+  e.preventDefault();
+  const svg=document.getElementById('cw-canvas');
+  const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
+  const p=cwState.cur.pts;
+  for(const ev of evs){
+    const [x,y]=cwPoint(ev,svg);
+    const dx=x-p[p.length-2], dy=y-p[p.length-1];
+    if(dx*dx+dy*dy<4) continue; // thin points closer than 2 units
+    p.push(x,y);
+  }
+  cwDrawLive();
+}
+
+function cwPointerUp(e){
+  if(!cwState?.cur||e.pointerId!==cwState.pointerId) return;
+  cwState.strokes.push(cwState.cur);
+  cwState.cur=null; cwState.pointerId=null;
+  cwState.redo=[]; cwState.dirty=true;
+  cwRender();
+}
+
+function cwInitCanvas(){
+  if(cwCanvasReady) return;
+  const svg=document.getElementById('cw-canvas');
+  svg.addEventListener('pointerdown',cwPointerDown);
+  svg.addEventListener('pointermove',cwPointerMove);
+  svg.addEventListener('pointerup',cwPointerUp);
+  svg.addEventListener('pointercancel',cwPointerUp); // commit what we have on system-cancel
+  cwCanvasReady=true;
+}
+
 // ── Notes ──
 function renderNotes(){
   const el=document.getElementById('notes-list');
@@ -1944,7 +2205,7 @@ function renderNotes(){
 // KEYBOARD
 // ═══════════════════════════════════════════════════
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeModal();closeStatusModal();closeImportModal();closePick();closeHelp();closeAddMaterialModal();closeDriveModal();closeJournalEntry();}
+  if(e.key==='Escape'){closeModal();closeStatusModal();closeImportModal();closePick();closeHelp();closeAddMaterialModal();closeDriveModal();closeJournalEntry();closeCaveEditor();}
   if(e.key==='n'&&!e.target.matches('input,textarea,select')) openModal();
 });
 

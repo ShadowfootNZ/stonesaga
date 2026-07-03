@@ -48,7 +48,19 @@ up **Drive Sync** (see below) so the group pulls and pushes to a shared file aut
 - **Journal tabs** — Culture (tribe name, structures, mantle powers, knowledge cards,
   taboos, pigments), Behemoths (lair hex, demeanor, revealed secrets), Challenge Record
   (grouped by epoch, newest first), Looming Challenges (re-orderable), Investigations,
-  and free-form Notes pages. All of it exports, imports, and Drive-syncs with the rest.
+  Cave Wall, and free-form Notes pages. All of it exports, imports, and Drive-syncs
+  with the rest.
+- **Cave Wall** — draw pictographic records with a finger, stylus, or Apple Pencil.
+  The palette is the six pencils from the game box (black, blue, red, dark green,
+  orange, silver) with three stroke widths, undo/redo, and palm rejection when a
+  pencil is in use. Drawings are stored as vector strokes, so they stay sharp at any
+  size, weigh a few KB, and sync with the group like everything else. The gallery
+  shows them in creation order painted directly onto the torch-lit cave wall
+  (`assets/images/cave-wall-bg.webp`, cropped from `CaveWall.webp`). Marks can be
+  copied by picking them by name in the editor — the mark image
+  (`assets/images/marks/<Name>.webp`) appears as a ghosted template to trace over
+  and pre-fills the drawing name; add new mark names to the `MARKS` list in
+  `app.js` (an image is optional).
 - **Import Codes CSV** — pre-load community crafting-code files (`Code;Flavor;Game Text;Item Name`,
   pip colour taken from the filename). Entries are treated as unverified: the code and item
   card ID are shown, but names and text stay behind a *Reveal spoiler* toggle until the card

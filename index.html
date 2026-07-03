@@ -43,8 +43,9 @@
     <button class="tab-btn" onclick="switchTab('challenges',this)">Challenges</button>
     <button class="tab-btn" onclick="switchTab('looming',this)">Looming</button>
     <button class="tab-btn" onclick="switchTab('investigations',this)">Investigations</button>
+    <button class="tab-btn" onclick="switchTab('cave-wall',this)">Cave Wall</button>
     <button class="tab-btn" onclick="switchTab('notes',this)">Notes</button>
-    <!-- Deferred tabs (see app.js TODO block): Valley Map | Cave Wall -->
+    <!-- Deferred tab (see app.js TODO block): Valley Map -->
   </div>
 
   <!-- TODO: VALLEY MAP tab-panel (deferred)
@@ -52,13 +53,11 @@
          Hex grid SVG + labelling UI. Background image upload. Hex annotation store.
        </div> -->
 
-  <!-- TODO: CAVE WALL tab-panel (deferred)
-       <div class="tab-panel" id="tab-cave-wall">
-         Gallery of cave drawings. Each entry has a name (always) + optional image.
-         Image sources: file upload (photo) OR in-browser SVG canvas (PointerEvents,
-         single-stroke cave-painting style — suited to Apple Pencil on iPad).
-         Store images as base64 in IndexedDB (too large for localStorage).
-       </div> -->
+  <!-- CAVE WALL -->
+  <div class="tab-panel" id="tab-cave-wall">
+    <div class="controls"><button class="btn btn-primary" onclick="openCaveEditor()">+ Add Drawing</button></div>
+    <div class="cave-grid" id="cave-wall-list"></div>
+  </div>
 
   <!-- CULTURE -->
   <div class="tab-panel" id="tab-culture">
@@ -338,7 +337,7 @@
 
     <div class="help-section">
       <h3>Journal tabs</h3>
-      <p><strong>Culture</strong> — tribe name, structures, mantle powers, knowledge cards, taboos, pigments. <strong>Behemoths</strong> — each with lair hex, demeanor, and revealed secrets. <strong>Challenges</strong> — record grouped by epoch, newest first. <strong>Looming</strong> — upcoming challenges in priority order (reorder with ▲▼). <strong>Investigations</strong> — omens and findings. <strong>Notes</strong> — free-form named pages. Everything is saved locally, included in Export JSON, and merged through Drive Sync like recipes.</p>
+      <p><strong>Culture</strong> — tribe name, structures, mantle powers, knowledge cards, taboos, pigments. <strong>Behemoths</strong> — each with lair hex, demeanor, and revealed secrets. <strong>Challenges</strong> — record grouped by epoch, newest first. <strong>Looming</strong> — upcoming challenges in priority order (reorder with ▲▼). <strong>Investigations</strong> — omens and findings. <strong>Cave Wall</strong> — draw pictographic records with a finger, stylus, or Apple Pencil using the six pencils from the game box; drawings appear directly on the cave wall in the order they were painted, and sync with the group. To copy a mark, pick it from <strong>Copy a mark…</strong> in the editor — it pre-fills the name and lays a ghosted template on the canvas to trace over (the template itself is never saved). <strong>Notes</strong> — free-form named pages. Everything is saved locally, included in Export JSON, and merged through Drive Sync like recipes.</p>
     </div>
 
     <div class="help-section">
@@ -348,6 +347,33 @@
 
     <div class="modal-actions">
       <button class="btn btn-primary" onclick="closeHelp()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- CAVE WALL EDITOR (full-screen; no outside-click close — stray taps must not discard a drawing) -->
+<div class="modal-overlay hidden" id="cave-overlay">
+  <div class="cave-editor">
+    <div class="cave-editor-top">
+      <input class="form-control" id="cw-name" placeholder="Name this drawing…">
+      <button class="btn" onclick="closeCaveEditor()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCaveDrawing()">Save</button>
+    </div>
+    <div class="cave-canvas-wrap" id="cw-canvas-wrap">
+      <svg id="cw-canvas" viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="cave-editor-tools">
+      <div class="cave-palette" id="cw-palette"></div>
+      <div class="cave-widths" id="cw-widths"></div>
+      <div class="cave-editor-actions">
+        <button class="btn" id="cw-undo" onclick="cwUndo()">Undo</button>
+        <button class="btn" id="cw-redo" onclick="cwRedo()">Redo</button>
+        <button class="btn" onclick="cwClear()">Clear</button>
+      </div>
+      <div class="cave-editor-actions">
+        <select class="form-control cave-mark-select" id="cw-mark" onchange="cwSetMark(this.value)"></select>
+        <button class="btn" id="cw-trace-toggle" style="display:none" onclick="cwToggleTrace()">Hide mark</button>
+      </div>
     </div>
   </div>
 </div>
