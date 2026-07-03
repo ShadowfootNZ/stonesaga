@@ -14,13 +14,21 @@
 // The token is issued on create (or claimed by the first push to a pre-token
 // file) and travels inside the group's JSON like driveFileId, so every device
 // that pulls or imports the group data learns it automatically. Pushes without
-// the right token are rejected. Reads stay open: the file is link-viewable
+// the right token are rejected once ENFORCE_TOKEN is true (see the rollout
+// grace switch below). Reads stay open: the file is link-viewable
 // anyway, and an open GET is how a device that predates the token self-heals —
 // it pulls the group JSON, adopts the token from it, and can push again.
 
 const FOLDER_NAME = 'Stonesaga';
 const MAX_PAYLOAD_BYTES = 2 * 1024 * 1024; // a full save is ~100KB; anything near 2MB is abuse
 const MAX_FILES = 10;                      // cap on files this script will create
+
+// Rollout grace switch: while false, the script still claims/stores tokens and
+// applies the caps, but accepts pushes with a missing/stale token — cached old
+// clients keep working. Flip to true and redeploy (~2026-07-18) once active
+// groups have synced with the tokened client; their tokens are already stored
+// by then, so enforcement is a non-event.
+const ENFORCE_TOKEN = false;
 
 function getFolder() {
   const iter = DriveApp.getFoldersByName(FOLDER_NAME);
@@ -77,10 +85,11 @@ function doPost(e) {
       const stored = storedToken(body.fileId);
       if (!stored) {
         // Pre-token file: the first tokened push claims it.
-        if (!body.token) return respond({ error: 'This file requires a sync token.' });
-        props.setProperty('token:' + body.fileId, body.token);
+        if (body.token) props.setProperty('token:' + body.fileId, body.token);
+        else if (ENFORCE_TOKEN) return respond({ error: 'This file requires a sync token.' });
       } else if (body.token !== stored) {
-        return respond({ error: 'Invalid sync token — Sync (pull) first to pick up the group token, then try again.' });
+        // Grace mode accepts but keeps the stored token — stale clients heal on their next pull.
+        if (ENFORCE_TOKEN) return respond({ error: 'Invalid sync token — Sync (pull) first to pick up the group token, then try again.' });
       }
       DriveApp.getFileById(body.fileId).setContent(JSON.stringify(body.data, null, 2));
       return respond({ ok: true });

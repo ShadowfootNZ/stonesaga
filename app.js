@@ -15,6 +15,24 @@
 //   (local-only) with the name/metadata syncing as usual. Drawing canvas itself
 //   shipped 2026-07-03 (vector strokes in the save JSON).
 //
+// ── DRIVE SYNC TOKEN ENFORCEMENT ───────────────────
+// TODO (by ~2026-07-18): Flip ENFORCE_TOKEN to true in drive-sync.gs and
+//   redeploy the script. The flag shipped false on 2026-07-04 so the script
+//   claims/stores tokens and applies the payload/creation caps without
+//   rejecting stale cached clients. Enforcement is safe once active groups
+//   have synced with the tokened client — their tokens are already stored.
+//
+// ── APP UPDATE CHECK ───────────────────────────────
+// TODO: Let players check for app updates from inside the app — stale cached
+//   clients are how things break (untokened pushes rejected after enforcement,
+//   tombstones rendered as live, deletes that resurrect). Plan: deploy.sh
+//   writes the STAMP into a tiny version.json next to index.html; app.js
+//   embeds its own STAMP, shows it somewhere quiet (Help / Drive modal), and
+//   fetches version.json with {cache:'no-store'} on load (and via a "Check
+//   for updates" button) — on mismatch show a "New version available — reload"
+//   notice. Keep it a nudge, not a blocker: reload mid-session must stay safe
+//   (it is — everything is in localStorage).
+//
 // ── MAKE REPO PRIVATE ──────────────────────────────
 // TODO (by 2026-07-17, ~2 weeks): Change the GitHub repo from public to
 //   private — it currently republishes copyrighted game content (mark art,

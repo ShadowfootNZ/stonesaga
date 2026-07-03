@@ -1,8 +1,8 @@
 {
   "slug": "stonesaga",
   "title": "Stonesaga Campaign Journal",
-  "summary": "A companion app for Stonesaga — track crafting discoveries, behemoths, challenges, culture, and campaign history.",
-  "description": "A table-friendly web app for the Stonesaga board game. Records crafted item recipes and dead-end codes, explores material combinations using token pip data, and supports import/merge so the whole group shares one journal. Being expanded into a full campaign journal with sections for the valley map, tribe culture, behemoths, challenge records, investigations, and a cave-wall picture gallery.",
+  "summary": "A companion app for Stonesaga — track crafting discoveries, behemoths, challenges, culture, cave-wall art, and campaign history.",
+  "description": "A table-friendly web app for the Stonesaga board game. Records crafted item recipes and dead-end codes, explores material combinations using token pip data (with inferred combinations from pip equivalence), and keeps a full campaign journal: tribe culture, behemoths, challenge record by epoch, looming challenges, investigations, notes, and a cave-wall gallery drawn in the app with the six game-box pencils. The whole group shares one journal via Google Drive sync with newest-wins merging, per-conflict review, and undo for deletions. Works on phones and tablets.",
   "repoUrl": "https://github.com/ShadowfootNZ/stonesaga",
   "appUrl": "https://apps.shadowfoot.com/stonesaga/",
   "deployDir": ".",
