@@ -15,6 +15,20 @@
 //   (local-only) with the name/metadata syncing as usual. Drawing canvas itself
 //   shipped 2026-07-03 (vector strokes in the save JSON).
 //
+// ── DELETION TOMBSTONES ────────────────────────────
+// TODO: Deletions don't propagate — merge is union-by-id, so anything deleted
+//   locally resurrects on the next sync with any device that still holds it.
+//   Replace hard deletes with tombstones ({id, deletedAt} kept in the entry's
+//   list) that merge like normal entries (newer updatedAt wins), filter
+//   tombstoned entries from every render, and purge tombstones older than
+//   ~90 days on load. Applies to all journal sections, altPairs, and recipes.
+//
+// ── UNDO DELETION ──────────────────────────────────
+// TODO: Once tombstones exist, deletion is reversible — offer "Undo" right
+//   after deleting (brief toast), plus a "Recently deleted" view per tab that
+//   clears the tombstone to restore the entry. This can then replace the
+//   blocking confirm() dialogs on delete.
+//
 // ── UNSYNCED DATA INDICATOR ────────────────────────
 // TODO: Show when the local journal has data not yet saved to the group —
 //   i.e. lastUpdated is newer than driveLastSynced. Badge the Drive Sync
@@ -911,6 +925,7 @@ function attachPairToRecipe(r,mat1,mat2,inferred){
   };
   if(inferred) p.inferred=true;
   (r.altPairs??=[]).push(p);
+  r.updatedAt=Date.now(); // attached pairs must survive sync merges
   return true;
 }
 
@@ -970,6 +985,7 @@ function removeAltPair(id,i){
   const p=r?.altPairs?.[i]; if(!p) return;
   if(!confirm(`Remove ${p.mat1Name} + ${p.mat2Name} from "${r.name}"?`)) return;
   r.altPairs.splice(i,1);
+  r.updatedAt=Date.now(); // removal wins merges against copies that still have the pair
   save(); renderJournal();
   if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
 }
@@ -1064,6 +1080,7 @@ function saveRecipe(){
     mat2Cat:KM[norm(document.getElementById('f-mat2-name').value.trim())]?.cat||'unknown',
     notes:document.getElementById('f-notes').value.trim(),
     addedAt:editingId?(recipes.find(r=>r.id===editingId)?.addedAt||Date.now()):Date.now(),
+    updatedAt:Date.now(), // newest copy wins on sync merges
   };
   // The form edits only the primary pair — keep any alternate combinations
   const prevAlt=editingId&&recipes.find(r=>r.id===editingId)?.altPairs;
@@ -1384,9 +1401,11 @@ function doImport(mode) {
   const { recipes: incoming, nullCodes: inNull, customMaterials: inMats, driveFileId: inDriveId } = pendingImport;
   const meta = (pendingImport.meta && !Array.isArray(pendingImport.meta)) ? pendingImport.meta : {};
   if (mode === 'merge') {
-    const map = Object.fromEntries(recipes.map(r => [r.id, r]));
-    incoming.forEach(r => { map[r.id] = r; });
-    recipes = Object.values(map);
+    // Union by card id; when both sides have a recipe, the most recently
+    // edited copy wins (untouched legacy copies count as 0, so any real edit
+    // beats them). Previously incoming always won, which meant a local rename
+    // was reverted by the very sync meant to publish it.
+    recipes = mergeById(recipes, incoming);
     Object.assign(nullCodes, inNull);
     const matNames = new Set(customMaterials.map(m => norm(m.name)));
     inMats.forEach(m => { if (!matNames.has(norm(m.name))) customMaterials.push(m); });
