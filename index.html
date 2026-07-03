@@ -40,11 +40,6 @@
 </header>
 
 <main>
-  <div class="stats-bar">
-    <div class="stat"><div class="stat-value" id="stat-total">0</div><div class="stat-label">Recipes</div></div>
-    <div class="stat"><div class="stat-value" id="stat-nothing">0</div><div class="stat-label">Dead ends</div></div>
-  </div>
-
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('explorer',this)">Crafting</button>
     <button class="tab-btn" onclick="switchTab('journal',this)">Recipes</button>
@@ -52,6 +47,11 @@
     <button class="tab-btn" onclick="switchTab('journal-group',this)">Journal</button>
     <button class="tab-btn" onclick="switchTab('cave-wall',this)">Cave Wall</button>
     <!-- Deferred tab (see app.js TODO block): Valley Map -->
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat"><div class="stat-value" id="stat-total">0</div><div class="stat-label">Recipes</div></div>
+    <div class="stat"><div class="stat-value" id="stat-nothing">0</div><div class="stat-label">Dead ends</div></div>
   </div>
 
   <!-- TODO: VALLEY MAP tab-panel (deferred)
