@@ -12,12 +12,14 @@ SSH="ssh -i ~/.ssh/deploy_key -p ${SSH_PORT:-22}"
 # Ensure the remote directory exists
 $SSH "$SSH_USER@$SSH_HOST" "mkdir -p '$REMOTE_PATH'"
 
-# Stage files, stamping the git SHA into index.html so browsers
-# always fetch updated assets after a deploy (cache-busting)
+# Stage files, stamping the git SHA into index.html/app.js so browsers
+# fetch updated assets and the app can compare itself with version.json.
 VERSION=$(git rev-parse --short HEAD)
 STAGE=$(mktemp -d)
 sed "s/STAMP/$VERSION/g" index.html > "$STAGE/index.html"
-cp styles.css app.js analytics.js materials.json catalogue.json "$STAGE/"
+sed "s/__APP_VERSION_STAMP__/$VERSION/g" app.js > "$STAGE/app.js"
+printf '{"version":"%s"}\n' "$VERSION" > "$STAGE/version.json"
+cp styles.css analytics.js materials.json catalogue.json "$STAGE/"
 cp manifest.json apple-touch-icon.png favicon-64.png icon-192.png icon-512.png icon-maskable-512.png "$STAGE/"
 cp -r assets/ "$STAGE/assets/"
 

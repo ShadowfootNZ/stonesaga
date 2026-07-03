@@ -16,17 +16,6 @@
 //   rejecting stale cached clients. Enforcement is safe once active groups
 //   have synced with the tokened client — their tokens are already stored.
 //
-// ── APP UPDATE CHECK ───────────────────────────────
-// TODO: Let players check for app updates from inside the app — stale cached
-//   clients are how things break (untokened pushes rejected after enforcement,
-//   tombstones rendered as live, deletes that resurrect). Plan: deploy.sh
-//   writes the STAMP into a tiny version.json next to index.html; app.js
-//   embeds its own STAMP, shows it somewhere quiet (Help / Drive modal), and
-//   fetches version.json with {cache:'no-store'} on load (and via a "Check
-//   for updates" button) — on mismatch show a "New version available — reload"
-//   notice. Keep it a nudge, not a blocker: reload mid-session must stay safe
-//   (it is — everything is in localStorage).
-//
 // ── MAKE REPO PRIVATE ──────────────────────────────
 // TODO (by 2026-07-17, ~2 weeks): Change the GitHub repo from public to
 //   private — it currently republishes copyrighted game content (mark art,
@@ -57,6 +46,20 @@
 // ═══════════════════════════════════════════════════
 const STORAGE_KEY   = 'stonesaga_v2';
 const DRIVE_SYNC_URL = 'https://script.google.com/macros/s/AKfycbyYhWRyscNnJnujY6e_TaDHKd23R--lPKkJ1VqdfWlc1uPOhGPeNFYB6WY3jzVtga6nzw/exec'; 
+const APP_VERSION_STAMP = '__APP_VERSION_STAMP__';
+const APP_VERSION_STAMP_PLACEHOLDER = '__APP_' + 'VERSION_STAMP__';
+const APP_VERSION = (() => {
+  if (APP_VERSION_STAMP && APP_VERSION_STAMP !== APP_VERSION_STAMP_PLACEHOLDER) return APP_VERSION_STAMP;
+  try {
+    const script = [...document.scripts].find(s => /(?:^|\/)app\.js(?:[?#]|$)/.test(s.getAttribute('src') || s.src || ''));
+    const src = script?.getAttribute('src') || script?.src || '';
+    const v = new URL(src, location.href).searchParams.get('v');
+    return v && v !== 'STAMP' ? v : 'dev';
+  } catch {
+    return 'dev';
+  }
+})();
+const EXPORT_VERSION = 4; // v4: entries may carry {deleted:true} tombstones; v3 clients render them as live
 const PIP_COLORS  = ['Blue','Red','Yellow','Purple','Grey','Green','Orange','Silver'];
 const PIP_CSS     = {Blue:'blue',Red:'red',Yellow:'yellow',Purple:'purple',Grey:'grey',Green:'green',Orange:'orange',Silver:'silver'};
 
@@ -141,6 +144,7 @@ let driveFileId     = null; // ID of this group's shared Drive file
 let driveToken      = null; // shared secret drive-sync.gs requires on every push; travels in the group JSON like driveFileId
 let driveLastSynced = null; // ISO timestamp of last successful Drive sync
 let drivePostImport = false; // when true, push to Drive after the import modal resolves
+let appUpdate       = {state:'idle', latest:null, checkedAt:null, error:null, dismissed:false};
 // tokenData key is lowercase material name
 
 // Journal sections — persistence is wired here; each section's UI arrives in its own phase.
@@ -337,6 +341,101 @@ function titleCase(s){return s.replace(/\b\w/g,c=>c.toUpperCase());}
 
 function pipHtml(color){
   return `<span class="pip-icon ${PIP_CSS[color]||'blue'}"></span>`;
+}
+
+function appVersionLabel(v=APP_VERSION){return v==='dev'?'local/dev':v;}
+function canCompareAppVersion(){return APP_VERSION && APP_VERSION !== 'dev' && APP_VERSION !== 'STAMP' && APP_VERSION !== APP_VERSION_STAMP_PLACEHOLDER;}
+function readVersionStamp(data){
+  if (typeof data === 'string') return data.trim();
+  if (!data || typeof data !== 'object') return '';
+  return String(data.version || data.stamp || data.appVersion || '').trim();
+}
+
+function appVersionStatusHtml(){
+  const cls = appUpdate.state === 'available' ? ' warn' : (appUpdate.state === 'error' ? ' error' : '');
+  const checking = appUpdate.state === 'checking';
+  let detail = '';
+  if (checking) detail = 'Checking for updates...';
+  else if (appUpdate.state === 'available') detail = `New version available: <strong>${esc(appUpdate.latest)}</strong>. Reload when ready.`;
+  else if (appUpdate.state === 'current') detail = 'Up to date.';
+  else if (appUpdate.state === 'error') detail = `Could not check for updates${appUpdate.error ? `: ${esc(appUpdate.error)}` : '.'}`;
+  else if (appUpdate.state === 'unavailable') detail = canCompareAppVersion() ? 'Update check unavailable right now.' : 'Local/dev build; no deploy stamp to compare.';
+
+  return `<div class="app-version-box${cls}">
+    <div><strong>App version:</strong> ${esc(appVersionLabel())}</div>
+    ${detail ? `<div>${detail}</div>` : ''}
+    <div class="app-version-actions">
+      <button class="btn btn-sm" onclick="checkForAppUpdate()"${checking?' disabled':''}>${checking?'Checking...':'Check for updates'}</button>
+      ${appUpdate.state === 'available' ? '<button class="btn btn-sm btn-primary" onclick="reloadForAppUpdate()">Reload</button>' : ''}
+    </div>
+  </div>`;
+}
+
+function renderAppUpdateStatus(){
+  for (const id of ['app-version-help','app-version-drive']) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = appVersionStatusHtml();
+  }
+
+  const banner = document.getElementById('app-update-banner');
+  if (!banner) return;
+  const show = appUpdate.state === 'available' && !appUpdate.dismissed;
+  banner.classList.toggle('hidden', !show);
+  if (show) {
+    banner.innerHTML = `<div><strong>New version available.</strong> You are on ${esc(appVersionLabel())}; latest is ${esc(appUpdate.latest)}.</div>
+      <div class="app-update-banner-actions">
+        <button class="btn btn-sm btn-primary" onclick="reloadForAppUpdate()">Reload</button>
+        <button class="btn btn-sm" onclick="dismissAppUpdate()">Dismiss</button>
+      </div>`;
+  }
+}
+
+async function checkForAppUpdate(opts={}){
+  const silent = opts.silent === true;
+  appUpdate.state = 'checking';
+  appUpdate.error = null;
+  renderAppUpdateStatus();
+
+  try {
+    const res = await fetch('version.json', {cache:'no-store'});
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const latest = readVersionStamp(await res.json());
+    if (!latest) throw new Error('version.json is missing a version');
+
+    appUpdate.latest = latest;
+    appUpdate.checkedAt = new Date().toISOString();
+    if (!canCompareAppVersion()) {
+      appUpdate.state = 'unavailable';
+      appUpdate.error = null;
+    } else if (latest !== APP_VERSION) {
+      appUpdate.state = 'available';
+      appUpdate.dismissed = false;
+    } else {
+      appUpdate.state = 'current';
+      appUpdate.dismissed = false;
+    }
+  } catch(err) {
+    appUpdate.latest = null;
+    appUpdate.state = silent ? 'unavailable' : 'error';
+    appUpdate.error = silent ? null : err.message;
+  }
+
+  renderAppUpdateStatus();
+}
+
+function dismissAppUpdate(){
+  appUpdate.dismissed = true;
+  renderAppUpdateStatus();
+}
+
+function reloadForAppUpdate(){
+  if (appUpdate.latest) {
+    const url = new URL(location.href);
+    url.searchParams.set('appv', appUpdate.latest);
+    location.assign(url.toString());
+  } else {
+    location.reload();
+  }
 }
 
 function allMatNames(){
@@ -1063,7 +1162,7 @@ function openPickModal(existing,mat1,mat2,prefillColor,prefillDigits,extra){
 }
 
 function closePick(){document.getElementById('pick-overlay').classList.add('hidden');}
-function openHelp(){document.getElementById('help-overlay').classList.remove('hidden');}
+function openHelp(){renderAppUpdateStatus();document.getElementById('help-overlay').classList.remove('hidden');}
 function closeHelp(){document.getElementById('help-overlay').classList.add('hidden');}
 
 function pickRecipe(id){
@@ -1313,10 +1412,19 @@ function fmtDate(iso) {
   return d.toLocaleString(undefined, {dateStyle:'medium', timeStyle:'short'});
 }
 
+function exportSchemaVersion(d) {
+  const v = Number(d?.version || 0);
+  return Number.isFinite(v) ? v : 0;
+}
+
+function newerSchemaMessage(d) {
+  return `Group file was written by a newer version of the app (schema v${exportSchemaVersion(d)}; this app supports v${EXPORT_VERSION}) — reload to update, then sync.`;
+}
+
 function buildExportPayload() {
   return {
     app: 'Stonesaga Crafting Journal',
-    version: 4, // v4: entries may carry {deleted:true} tombstones; v3 clients render them as live
+    version: EXPORT_VERSION,
 
     exportedAt: new Date().toISOString(),
     lastUpdated: lastUpdated || new Date().toISOString(),
@@ -1527,7 +1635,7 @@ function importData(event) {
         `<strong>Last updated:</strong> ${esc(fileUpdated)}<br>` +
         `<strong>Recipes:</strong> ${live(incoming).length} &nbsp;·&nbsp; <strong>Dead-end codes:</strong> ${nullCount}` +
         (journalEntryCount(d) ? ` &nbsp;·&nbsp; <strong>Journal entries:</strong> ${journalEntryCount(d)}` : '') +
-        ((d.version||0) > 4 ? `<br><em>⚠ This file is from a newer version of the app — consider refreshing before importing.</em>` : '');
+        (exportSchemaVersion(d) > EXPORT_VERSION ? `<br><em>⚠ This file is from a newer version of the app — consider refreshing before importing.</em>` : '');
 
       const curUpdated = fmtDate(lastUpdated);
       document.getElementById('im-current').innerHTML =
@@ -1907,16 +2015,19 @@ function closeDriveModal() { document.getElementById('drive-overlay').classList.
 function renderDriveModal() {
   const statusEl  = document.getElementById('drive-modal-status');
   const actionsEl = document.getElementById('drive-modal-actions');
+  const versionHtml = '<div id="app-version-drive"></div>';
 
   if (!DRIVE_SYNC_URL) {
-    statusEl.innerHTML  = '<p class="drive-notice">Drive sync is not yet configured — set <code>DRIVE_SYNC_URL</code> in app.js after deploying drive-sync.gs.</p>';
+    statusEl.innerHTML  = '<p class="drive-notice">Drive sync is not yet configured — set <code>DRIVE_SYNC_URL</code> in app.js after deploying drive-sync.gs.</p>' + versionHtml;
     actionsEl.innerHTML = '';
+    renderAppUpdateStatus();
     return;
   }
 
   if (!driveFileId) {
-    statusEl.innerHTML  = '<p>No group file yet. Create one to share your journal with the table — everyone who imports your JSON will connect to it automatically.</p>';
+    statusEl.innerHTML  = '<p>No group file yet. Create one to share your journal with the table — everyone who imports your JSON will connect to it automatically.</p>' + versionHtml;
     actionsEl.innerHTML = '<button class="btn btn-primary" id="drive-create-btn" onclick="createDriveFile()">Create group file</button>';
+    renderAppUpdateStatus();
     return;
   }
 
@@ -1924,8 +2035,10 @@ function renderDriveModal() {
   statusEl.innerHTML =
     `<div class="drive-file-row">Group file: <a href="${driveLink}" target="_blank" rel="noopener" class="drive-file-link">View in Drive ↗</a></div>` +
     `<div class="drive-synced">Last synced: ${esc(driveLastSynced ? fmtDate(driveLastSynced) : 'never')}</div>` +
-    (hasUnsyncedChanges() ? `<div class="drive-unsynced-note">● You have local changes not yet synced to the group.</div>` : '');
+    (hasUnsyncedChanges() ? `<div class="drive-unsynced-note">● You have local changes not yet synced to the group.</div>` : '') +
+    versionHtml;
   actionsEl.innerHTML = '<button class="btn btn-primary" id="drive-sync-btn" onclick="syncWithDrive()">Sync</button>';
+  renderAppUpdateStatus();
 }
 
 async function createDriveFile() {
@@ -1973,6 +2086,7 @@ async function syncWithDrive() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const d = await res.json();
     if (d.error) throw new Error(d.error);
+    if (exportSchemaVersion(d) > EXPORT_VERSION) throw new Error(newerSchemaMessage(d));
     drivePostImport = true;
     closeDriveModal();
     _loadDriveImport(d);
@@ -1984,6 +2098,11 @@ async function syncWithDrive() {
 }
 
 function _loadDriveImport(d) {
+  if (exportSchemaVersion(d) > EXPORT_VERSION) {
+    drivePostImport = false;
+    alert(newerSchemaMessage(d));
+    return;
+  }
   const incoming = d.recipes || (Array.isArray(d) ? d : null);
   if (!incoming) { drivePostImport = false; alert('Unrecognised format received from Drive.'); return; }
   const inNull = d.nullCodes || {};
@@ -2542,4 +2661,6 @@ document.addEventListener('keydown',e=>{
   renderJournal();
   renderTokenNotice();
   updateSyncBadge();
+  renderAppUpdateStatus();
+  checkForAppUpdate({silent:true});
 })();

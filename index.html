@@ -39,6 +39,8 @@
   </div>
 </header>
 
+<div id="app-update-banner" class="app-update-banner hidden"></div>
+
 <main>
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('explorer',this)">Crafting</button>
@@ -362,6 +364,11 @@
     <div class="help-section">
       <h3>Sharing with the table</h3>
       <p>Use <strong>Export JSON</strong> to save your current data, then share the file. Others import it with <strong>Import JSON</strong> — choose <strong>Merge</strong> to combine with their existing data, or <strong>Overwrite</strong> to replace it entirely.</p>
+    </div>
+
+    <div class="help-section">
+      <h3>App version</h3>
+      <div id="app-version-help"></div>
     </div>
 
     <div class="modal-actions">

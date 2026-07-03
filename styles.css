@@ -33,6 +33,13 @@ header .subtitle{font-size:.75rem;color:var(--flint);letter-spacing:.15em;text-t
 .btn-danger{border-color:var(--pip-red);color:var(--pip-red);}
 .btn-danger:hover{background:var(--pip-red);color:white;}
 .btn-sm{font-size:.65rem;padding:.25rem .6rem;}
+.btn:disabled{opacity:.55;cursor:default;}
+.btn:disabled:hover{border-color:var(--smoke);color:var(--chalk);background:transparent;}
+.btn-primary:disabled:hover{background:var(--ochre);border-color:var(--ochre);color:#fff;}
+
+.app-update-banner{position:relative;z-index:2;width:calc(100% - 3rem);max-width:1100px;margin:1rem auto -1rem;padding:.7rem .9rem;background:var(--ash);border:1px solid var(--pip-red);border-left:3px solid var(--pip-red);color:var(--chalk);display:flex;align-items:center;justify-content:space-between;gap:.8rem;box-shadow:0 2px 8px rgba(44,29,28,.12);font-size:.92rem;}
+.app-update-banner.hidden{display:none;}
+.app-update-banner-actions{display:flex;gap:.45rem;flex-wrap:wrap;justify-content:flex-end;}
 
 .tabs{display:flex;flex-wrap:wrap;border-bottom:1px solid var(--smoke);margin-bottom:.8rem;background:var(--ash);}
 .tab-btn{font-family:'Cinzel',serif;font-size:.8rem;font-weight:600;letter-spacing:.06em;padding:.6rem 1.4rem;border:1px solid transparent;border-bottom:none;background:transparent;color:var(--flint);cursor:pointer;text-transform:uppercase;transition:all .15s;margin-bottom:-1px;}
@@ -288,6 +295,10 @@ main{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:2rem 1.5
 .help-section ul{list-style:none;display:flex;flex-direction:column;gap:.4rem;font-size:.9rem;}
 .help-section li{display:flex;align-items:center;gap:.6rem;}
 .help-swatch{display:inline-block;width:14px;height:14px;border:2px solid;flex-shrink:0;}
+.app-version-box{margin-top:.7rem;padding:.65rem .75rem;background:rgba(239,232,218,.65);border:1px solid var(--smoke);font-size:.85rem;line-height:1.5;color:var(--flint);}
+.app-version-box.warn{border-color:var(--pip-red);background:rgba(192,74,74,.08);color:var(--chalk);}
+.app-version-box.error{border-color:var(--pip-orange);background:rgba(196,122,58,.08);}
+.app-version-actions{display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.55rem;}
 
 @media(max-width:768px){
   .recipe-grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));}
@@ -339,6 +350,8 @@ main{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:2rem 1.5
 
 @media(max-width:600px){
   header{padding:.85rem 1rem;flex-direction:column;gap:.7rem;align-items:flex-start;}
+  .app-update-banner{width:calc(100% - 2rem);margin:.8rem auto -.6rem;flex-direction:column;align-items:flex-start;}
+  .app-update-banner-actions{width:100%;justify-content:flex-start;}
   .header-actions{width:100%;flex-wrap:nowrap;}
   .header-actions>.btn,.header-menu{flex:1;min-width:0;text-align:center;}
   .header-actions>.btn[title="Help"]{flex:0 0 auto;}
