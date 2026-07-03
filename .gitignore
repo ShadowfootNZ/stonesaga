@@ -18,3 +18,7 @@ dist/
 
 # Game source material — copyrighted; keep local only
 *.pdf
+stonesaga-crafting-*.csv
+
+# Session data exports (players' campaign saves)
+stonesaga-20??-*.json

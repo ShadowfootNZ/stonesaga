@@ -15,6 +15,26 @@
 //   (local-only) with the name/metadata syncing as usual. Drawing canvas itself
 //   shipped 2026-07-03 (vector strokes in the save JSON).
 //
+// ── UNSYNCED DATA INDICATOR ────────────────────────
+// TODO: Show when the local journal has data not yet saved to the group —
+//   i.e. lastUpdated is newer than driveLastSynced. Badge the Drive Sync
+//   button (e.g. a dot + "unsaved changes") and consider a gentle nudge on
+//   leaving the page. Local-only data is one Safari eviction away from gone.
+//
+// ── DRIVE SYNC AUTH TOKEN ──────────────────────────
+// TODO: Add a shared-secret token that drive-sync.gs checks on every request.
+//   The script URL is public (repo + page source) and currently accepts
+//   unauthenticated create/push from anyone. Token travels in the group's
+//   JSON like driveFileId; reject requests without it; add a payload size cap
+//   and a cap on file creation while in there.
+//
+// ── MAKE REPO PRIVATE ──────────────────────────────
+// TODO (by 2026-07-17, ~2 weeks): Change the GitHub repo from public to
+//   private — it currently republishes copyrighted game content (mark art,
+//   card text). Check the deploy workflow still runs on a private repo
+//   (GitHub Actions: fine; GitHub Pages mirror will stop — primary hosting
+//   is apps.shadowfoot.com via SSH, unaffected).
+//
 // ── STORAGE SIZE GUARD ─────────────────────────────
 // TODO: Add a save-size check. localStorage is ~5MB and save() currently
 //   swallows quota errors silently — data loss without a symptom. Measure the
