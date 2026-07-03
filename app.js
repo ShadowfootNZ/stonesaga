@@ -143,6 +143,7 @@ let lastUpdated     = null;
 let driveFileId     = null; // ID of this group's shared Drive file
 let driveToken      = null; // shared secret drive-sync.gs requires on every push; travels in the group JSON like driveFileId
 let driveLastSynced = null; // ISO timestamp of last successful Drive sync
+let driveSyncInFlight = false; // true while a pull/merge is being pushed back to Drive
 let drivePostImport = false; // when true, push to Drive after the import modal resolves
 let appUpdate       = {state:'idle', latest:null, checkedAt:null, error:null, dismissed:false};
 // tokenData key is lowercase material name
@@ -1389,6 +1390,7 @@ function save() {
 // Local data newer than the last Drive push (or never pushed at all) is one
 // browser-storage eviction away from gone — surface that on the Drive button.
 function hasUnsyncedChanges() {
+  if (driveSyncInFlight) return false;
   return !!lastUpdated && (!driveLastSynced || lastUpdated > driveLastSynced);
 }
 
@@ -2065,16 +2067,23 @@ async function _pushToDrive() {
   // Pre-token group file (created before auth existed): mint a token here —
   // the script stores it on first push, and the group JSON distributes it.
   if (!driveToken) driveToken = crypto.randomUUID();
-  const res = await fetch(DRIVE_SYNC_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action: 'push', fileId: driveFileId, token: driveToken, data: buildExportPayload() }),
-  });
-  const d = await res.json();
-  if (d.error) throw new Error(d.error);
-  // Mark exactly the pushed state as synced — a fresh timestamp here would
-  // leave lastUpdated forever "newer" once save() re-stamps it.
-  driveLastSynced = lastUpdated || new Date().toISOString();
-  persist();
+  driveSyncInFlight = true;
+  updateSyncBadge();
+  try {
+    const res = await fetch(DRIVE_SYNC_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'push', fileId: driveFileId, token: driveToken, data: buildExportPayload() }),
+    });
+    const d = await res.json();
+    if (d.error) throw new Error(d.error);
+    // Mark exactly the pushed state as synced — a fresh timestamp here would
+    // leave lastUpdated forever "newer" once save() re-stamps it.
+    driveLastSynced = lastUpdated || new Date().toISOString();
+    persist();
+  } finally {
+    driveSyncInFlight = false;
+    updateSyncBadge();
+  }
 }
 
 async function syncWithDrive() {
