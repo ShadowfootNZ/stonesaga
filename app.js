@@ -15,33 +15,6 @@
 //   (local-only) with the name/metadata syncing as usual. Drawing canvas itself
 //   shipped 2026-07-03 (vector strokes in the save JSON).
 //
-// ── DELETION TOMBSTONES ────────────────────────────
-// TODO: Deletions don't propagate — merge is union-by-id, so anything deleted
-//   locally resurrects on the next sync with any device that still holds it.
-//   Replace hard deletes with tombstones ({id, deletedAt} kept in the entry's
-//   list) that merge like normal entries (newer updatedAt wins), filter
-//   tombstoned entries from every render, and purge tombstones older than
-//   ~90 days on load. Applies to all journal sections, altPairs, and recipes.
-//
-// ── UNDO DELETION ──────────────────────────────────
-// TODO: Once tombstones exist, deletion is reversible — offer "Undo" right
-//   after deleting (brief toast), plus a "Recently deleted" view per tab that
-//   clears the tombstone to restore the entry. This can then replace the
-//   blocking confirm() dialogs on delete.
-//
-// ── UNSYNCED DATA INDICATOR ────────────────────────
-// TODO: Show when the local journal has data not yet saved to the group —
-//   i.e. lastUpdated is newer than driveLastSynced. Badge the Drive Sync
-//   button (e.g. a dot + "unsaved changes") and consider a gentle nudge on
-//   leaving the page. Local-only data is one Safari eviction away from gone.
-//
-// ── DRIVE SYNC AUTH TOKEN ──────────────────────────
-// TODO: Add a shared-secret token that drive-sync.gs checks on every request.
-//   The script URL is public (repo + page source) and currently accepts
-//   unauthenticated create/push from anyone. Token travels in the group's
-//   JSON like driveFileId; reject requests without it; add a payload size cap
-//   and a cap on file creation while in there.
-//
 // ── MAKE REPO PRIVATE ──────────────────────────────
 // TODO (by 2026-07-17, ~2 weeks): Change the GitHub repo from public to
 //   private — it currently republishes copyrighted game content (mark art,
@@ -60,12 +33,6 @@
 //   separate files via drive-sync.gs instead of inlining them in the JSON —
 //   keeps the save small while letting the whole group see images. Store the
 //   Drive file id in the entry; fetch on demand; cache locally.
-//
-// ── IMPORT CONFLICT REVIEW ─────────────────────────
-// TODO: Let the user review and resolve each import conflict individually
-//   instead of all-or-nothing Merge/Overwrite. Per conflict: pick yours vs
-//   theirs, and for name conflicts allow editing the recipe name directly in
-//   the conflict list before applying.
 //
 // ── CODEX ERRATA REVIEW ────────────────────────────
 // TODO: Review content derived from the Codex — it is v1 and needs the
@@ -140,7 +107,7 @@ function rebuildMaterials() {
   KNOWN_MATERIALS = [
     ...BASE_MATERIALS,
     ...customMaterials
-      .filter(c => !baseNames.has(norm(c.name)))
+      .filter(c => !c.deleted && !baseNames.has(norm(c.name)))
       .map(c => ({name:c.name, cat:c.cat||'unknown', processed:c.processed||null, image:c.image||null, marks:c.marks||null, notes:c.notes||null}))
   ];
   KM = Object.fromEntries(KNOWN_MATERIALS.map(m => [m.name.toLowerCase(), m]));
@@ -159,6 +126,7 @@ let tokenData       = {};   // {"wood (hardened)": [[leftColor,leftCount,rightCo
 let customMaterials = [];   // [{name, cat}] — item-card materials added at the table
 let lastUpdated     = null;
 let driveFileId     = null; // ID of this group's shared Drive file
+let driveToken      = null; // shared secret drive-sync.gs requires on every push; travels in the group JSON like driveFileId
 let driveLastSynced = null; // ISO timestamp of last successful Drive sync
 let drivePostImport = false; // when true, push to Drive after the import modal resolves
 // tokenData key is lowercase material name
@@ -345,6 +313,12 @@ function computeCodes(matA, matB) {
 // ═══════════════════════════════════════════════════
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function norm(s){return s.trim().toLowerCase();}
+// Tombstones: deleting keeps the entry in place as {..., deleted:true} with a
+// fresh updatedAt, so the deletion syncs like any edit (newer copy wins)
+// instead of resurrecting from devices that still hold the entry. Reads go
+// through these filters; merge and export see the tombstones.
+function live(list){return (list||[]).filter(e=>!e.deleted);}
+function liveKeys(obj){return Object.keys(obj||{}).filter(k=>!obj[k]?.deleted);}
 function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 function codeKey(color,digits){return `${color} ${digits}`;}
 function titleCase(s){return s.replace(/\b\w/g,c=>c.toUpperCase());}
@@ -358,7 +332,7 @@ function allMatNames(){
   // and tokenData keys (lowercase) or recipe entries with inconsistent casing.
   const map=new Map();
   KNOWN_MATERIALS.forEach(m=>map.set(m.name.toLowerCase(),m.name));
-  recipes.forEach(r=>{
+  live(recipes).forEach(r=>{
     if(r.mat1Name){const n=r.mat1Name.trim();if(!map.has(n.toLowerCase()))map.set(n.toLowerCase(),n);}
     if(r.mat2Name){const n=r.mat2Name.trim();if(!map.has(n.toLowerCase()))map.set(n.toLowerCase(),n);}
   });
@@ -386,21 +360,81 @@ function withVariant(name){
 // ═══════════════════════════════════════════════════
 function switchTab(id,btn){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tabs .tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('tab-'+id).classList.add('active');
   btn.classList.add('active');
+  // The recipe/dead-end counters only apply to the crafting-side tabs
+  document.querySelector('.stats-bar').style.display=['explorer','journal','materials'].includes(id)?'':'none';
   if(id==='explorer') renderTokenNotice();
   if(id==='materials') renderMaterials();
-  const journalTabs={culture:renderCulture,behemoths:renderBehemoths,challenges:renderChallenges,looming:renderLooming,investigations:renderInvestigations,'cave-wall':renderCaveWall,notes:renderNotes};
-  if(journalTabs[id]) journalTabs[id]();
+  if(id==='cave-wall') renderCaveWall();
+  if(id==='journal-group') switchJournalTab(journalSubtab); // reopen where the reader left off
 }
+
+// Culture / Behemoths / Challenges / Looming / Investigations / Notes live as
+// sub-tabs under the Journal parent tab to keep the top-level tab row phone-sized.
+let journalSubtab='culture';
+const JOURNAL_TAB_RENDER={culture:renderCulture,behemoths:renderBehemoths,challenges:renderChallenges,looming:renderLooming,investigations:renderInvestigations,notes:renderNotes};
+
+function switchJournalTab(id){
+  journalSubtab=id;
+  document.querySelectorAll('#tab-journal-group .subtab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+id));
+  document.querySelectorAll('#journal-subtabs .subtab-btn').forEach(b=>b.classList.toggle('active',b.dataset.sub===id));
+  (JOURNAL_TAB_RENDER[id]||renderCulture)();
+}
+
+// ═══════════════════════════════════════════════════
+// HEADER MENU (import/export actions, collapsed on phones)
+// ═══════════════════════════════════════════════════
+function toggleHeaderMenu(){
+  document.getElementById('header-menu-panel').classList.toggle('open');
+}
+document.addEventListener('click',e=>{
+  const panel=document.getElementById('header-menu-panel');
+  if(panel&&panel.classList.contains('open')&&!e.target.closest('#header-menu-toggle'))
+    panel.classList.remove('open'); // any click — including a menu action — closes it
+});
 
 // ═══════════════════════════════════════════════════
 // STATS
 // ═══════════════════════════════════════════════════
 function updateStats(){
-  document.getElementById('stat-total').textContent=recipes.length;
-  document.getElementById('stat-nothing').textContent=Object.keys(nullCodes).length;
+  document.getElementById('stat-total').textContent=live(recipes).length;
+  document.getElementById('stat-nothing').textContent=liveKeys(nullCodes).length;
+}
+
+// ═══════════════════════════════════════════════════
+// UNDO TOAST + RECENTLY DELETED
+// ═══════════════════════════════════════════════════
+// Deletes are soft (tombstones), so they're reversible: each delete shows a
+// brief Undo toast, and each tab lists its tombstones under "Recently
+// deleted" until the 90-day GC clears them.
+let undoToastTimer=null, undoToastFn=null;
+
+function showUndoToast(msg, undoFn){
+  document.getElementById('undo-toast-msg').textContent=msg;
+  document.getElementById('undo-toast').classList.remove('hidden');
+  undoToastFn=undoFn;
+  clearTimeout(undoToastTimer);
+  undoToastTimer=setTimeout(hideUndoToast, 6000);
+}
+function hideUndoToast(){
+  document.getElementById('undo-toast').classList.add('hidden');
+  undoToastFn=null; clearTimeout(undoToastTimer);
+}
+function undoToastAction(){
+  const f=undoToastFn; hideUndoToast(); if(f) f();
+}
+
+// "Recently deleted" disclosure appended to a tab's list. items: [{label, restore}]
+// where restore is an onclick expression. Spans full width inside grids.
+function recentlyDeletedHtml(items){
+  if(!items.length) return '';
+  return `<details class="recently-deleted" style="grid-column:1/-1">
+    <summary>Recently deleted (${items.length})</summary>
+    <div class="recently-deleted-list">${items.map(i=>
+      `<div class="recently-deleted-row"><span>${i.label}</span><button class="btn btn-sm" onclick="${i.restore}">Restore</button></div>`).join('')}</div>
+  </details>`;
 }
 
 // ═══════════════════════════════════════════════════
@@ -414,7 +448,8 @@ function renderJournal(){
   document.getElementById('clear-btn').style.display=hasFilter?'block':'none';
   const q=document.getElementById('search').value.toLowerCase();
   const andM=document.getElementById('filter-mode-and').checked;
-  const list=recipes.filter(r=>{
+  const all=live(recipes);
+  const list=all.filter(r=>{
     if(matFilterTags.length){
       const mats=pairsOf(r).flatMap(p=>[norm(p.mat1Name||''),norm(p.mat2Name||'')]);
       // Expand each filter tag to include its processed variant:
@@ -432,8 +467,10 @@ function renderJournal(){
   }).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
 
   const grid=document.getElementById('recipe-grid');
+  const deletedBlock=recentlyDeletedHtml(recipes.filter(r=>r.deleted).map(r=>
+    ({label:`${esc(r.name)} <span style="color:var(--flint);font-size:.8rem">${esc(r.id)}</span>`, restore:`restoreRecipe('${esc(r.id)}')`})));
   if(!list.length){
-    grid.innerHTML=`<div class="empty-state"><div class="glyph">◈</div><h2>${recipes.length?'No matching recipes':'No recipes recorded yet'}</h2><p>${recipes.length?'Adjust filters.':'Discover a combination and record it here.'}</p></div>`;
+    grid.innerHTML=`<div class="empty-state"><div class="glyph">◈</div><h2>${all.length?'No matching recipes':'No recipes recorded yet'}</h2><p>${all.length?'Adjust filters.':'Discover a combination and record it here.'}</p></div>`+deletedBlock;
     return;
   }
   grid.innerHTML=list.map(r=>{
@@ -462,7 +499,7 @@ function renderJournal(){
         <button class="btn btn-sm btn-danger" onclick="deleteRecipe('${r.id}')">Delete</button>
       </div>
     </div>`;
-  }).join('');
+  }).join('')+deletedBlock;
 }
 
 // journal material filter
@@ -573,26 +610,27 @@ function renderExplorer(){
   if(!pairs.length){out.innerHTML='<p style="color:var(--flint);font-style:italic">No valid pairings found.</p>';return;}
 
   // Code → owning recipe, for inferring results on pairs that share a recorded code
+  const liveRecipes=live(recipes);
   const codeOwner={};
-  for(const r of recipes) for(const c of (r.codes||[])) codeOwner[codeKey(c.color,c.digits)]=r;
+  for(const r of liveRecipes) for(const c of (r.codes||[])) codeOwner[codeKey(c.color,c.digits)]=r;
 
   let html='';
   for(const [a,b] of pairs){
     const computedCodes=computeCodes(a,b); // null if no token data for either
     // Apply filter before building HTML
-    const hasKnown=recipes.some(r=>recipeUsesPair(r,a,b));
+    const hasKnown=liveRecipes.some(r=>recipeUsesPair(r,a,b));
     if(explorerFilter==='known'&&!hasKnown) continue;
     if(explorerFilter==='unknown'&&hasKnown) continue;
     const hasTokenData=computedCodes!==null;
 
     // Recipes crafted with this pair (primary or alternate; order-insensitive)
-    const matchingRecipes=recipes.filter(r=>recipeUsesPair(r,a,b));
+    const matchingRecipes=liveRecipes.filter(r=>recipeUsesPair(r,a,b));
     const discoveredKeys=new Set(matchingRecipes.flatMap(r=>(r.codes||[]).map(c=>codeKey(c.color,c.digits))));
 
     // Null codes for this pair (order-insensitive)
     const nullForPair=Object.entries(nullCodes)
       .filter(([,v])=>{
-        if(!v||!v.mat1||!v.mat2) return false;
+        if(!v||v.deleted||!v.mat1||!v.mat2) return false;
         const m1=norm(v.mat1),m2=norm(v.mat2);
         return (m1===norm(a)&&m2===norm(b))||(m1===norm(b)&&m2===norm(a));
       })
@@ -680,7 +718,7 @@ function renderExplorer(){
         continue;
       }
       const p=provisionalCodes[k];
-      if(p){
+      if(p&&!p.deleted){
         const spoiler=p.revealed
           ? `${p.name?`<div class="combo-item-name">${esc(p.name)}</div>`:''}
              ${p.flavor?`<div class="prov-flavor">${esc(p.flavor)}</div>`:''}
@@ -773,8 +811,9 @@ function openStatusModal(unused, mat1, mat2, existingKey, directNothing) {
 
   // Show existing null codes for this pair with remove buttons
   const existing = Object.entries(nullCodes)
-    .filter(([,v]) => v && norm(v.mat1||'') === norm(mat1) && norm(v.mat2||'') === norm(mat2) ||
-                      v && norm(v.mat1||'') === norm(mat2) && norm(v.mat2||'') === norm(mat1))
+    .filter(([,v]) => v && !v.deleted &&
+                      (norm(v.mat1||'') === norm(mat1) && norm(v.mat2||'') === norm(mat2) ||
+                       norm(v.mat1||'') === norm(mat2) && norm(v.mat2||'') === norm(mat1)))
     .map(([k]) => k);
   const el = document.getElementById('sm-existing');
   if (existing.length) {
@@ -795,14 +834,15 @@ function openStatusModal(unused, mat1, mat2, existingKey, directNothing) {
 
   if (directNothing && existingKey) {
     // immediate save when clicking Nothing on a known computed code
-    nullCodes[existingKey] = { mat1, mat2 };
+    nullCodes[existingKey] = { mat1, mat2, updatedAt: Date.now() };
     save(); updateStats(); renderExplorer();
     document.getElementById('status-overlay').classList.add('hidden');
   }
 }
 
 function removeNullCode(key) {
-  delete nullCodes[key];
+  const v = nullCodes[key];
+  if (v) nullCodes[key] = { ...v, deleted: true, updatedAt: Date.now() };
   save(); updateStats();
   // re-render the existing list in-place
   openStatusModal(null, smState.mat1, smState.mat2);
@@ -819,7 +859,7 @@ function setCodeStatus(status) {
       return;
     }
     const c = codes[0];
-    nullCodes[codeKey(c.color, c.digits)] = { mat1: smState.mat1, mat2: smState.mat2 };
+    nullCodes[codeKey(c.color, c.digits)] = { mat1: smState.mat1, mat2: smState.mat2, updatedAt: Date.now() };
   }
   save(); updateStats();
   if (document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
@@ -853,7 +893,7 @@ function addCodes(){
   codes.forEach(c=>{
     const key=codeKey(c.color,c.digits);
     // Check against all other recipes (exclude the one currently being edited)
-    const clash=recipes.find(r=>r.id!==editingId&&(r.codes||[]).some(x=>codeKey(x.color,x.digits)===key));
+    const clash=recipes.find(r=>r.id!==editingId&&!r.deleted&&(r.codes||[]).some(x=>codeKey(x.color,x.digits)===key));
     if(clash){ conflicts.push(`${key} is already recorded for "${clash.name}"`); return; }
     if(!pendingCodes.some(x=>x.color===c.color&&x.digits===c.digits)) pendingCodes.push(c);
   });
@@ -933,7 +973,7 @@ function offerPairToClashingRecipe(clash,mat1,mat2,key){
 // One-tap attach from an Explorer "Inferred" card: the code is already recorded on a
 // recipe, so this pair must craft the same item (the codex maps code → result).
 function attachInferred(key,mat1,mat2){
-  const owner=recipes.find(r=>(r.codes||[]).some(c=>codeKey(c.color,c.digits)===key));
+  const owner=recipes.find(r=>!r.deleted&&(r.codes||[]).some(c=>codeKey(c.color,c.digits)===key));
   if(!owner||!attachPairToRecipe(owner,mat1,mat2,true)) return;
   save(); renderJournal(); renderExplorer();
 }
@@ -951,7 +991,7 @@ function inferCombinations(){
     }
   }
   let added=0; const touched=new Set();
-  for(const r of recipes){
+  for(const r of live(recipes)){
     for(const c of (r.codes||[])){
       for(const [a,b] of (codeToPairs[codeKey(c.color,c.digits)]||[])){
         if(attachPairToRecipe(r,a,b,true)){added++;touched.add(r.name);}
@@ -970,16 +1010,21 @@ function inferCombinations(){
 function removeAltPair(id,i){
   const r=recipes.find(x=>x.id===id);
   const p=r?.altPairs?.[i]; if(!p) return;
-  if(!confirm(`Remove ${p.mat1Name} + ${p.mat2Name} from "${r.name}"?`)) return;
   r.altPairs.splice(i,1);
   r.updatedAt=Date.now(); // removal wins merges against copies that still have the pair
   save(); renderJournal();
   if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+  showUndoToast(`Removed ${p.mat1Name} + ${p.mat2Name} from "${r.name}"`,()=>{
+    r.altPairs.splice(Math.min(i,r.altPairs.length),0,p);
+    r.updatedAt=Date.now();
+    save(); renderJournal();
+    if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+  });
 }
 
 // extra = optional {name, cardId, notes} prefill for a new recipe (used by provisional Confirm)
 function openModalForPair(mat1,mat2,prefillColor,prefillDigits,extra){
-  const existing=recipes.filter(r=>recipeUsesPair(r,mat1,mat2));
+  const existing=live(recipes).filter(r=>recipeUsesPair(r,mat1,mat2));
   if(existing.length){
     openPickModal(existing,mat1,mat2,prefillColor,prefillDigits,extra);
     return;
@@ -1009,7 +1054,7 @@ function pickRecipe(id){
   if(prefillColor&&prefillDigits){
     const key=codeKey(prefillColor,prefillDigits);
     const alreadyOnThis=pendingCodes.some(c=>codeKey(c.color,c.digits)===key);
-    const clash=!alreadyOnThis&&recipes.find(r=>r.id!==id&&(r.codes||[]).some(x=>codeKey(x.color,x.digits)===key));
+    const clash=!alreadyOnThis&&recipes.find(r=>r.id!==id&&!r.deleted&&(r.codes||[]).some(x=>codeKey(x.color,x.digits)===key));
     if(clash){
       // The code belongs to a different recipe — offer to attach this combination there instead
       if(offerPairToClashingRecipe(clash,mat1,mat2,key)) closeModal();
@@ -1028,7 +1073,7 @@ function _openNewRecipeForPair(mat1,mat2,prefillColor,prefillDigits,extra){
   let prefillCode=!!(prefillColor&&prefillDigits);
   if(prefillCode){
     const key=codeKey(prefillColor,prefillDigits);
-    const clash=recipes.find(r=>(r.codes||[]).some(x=>codeKey(x.color,x.digits)===key));
+    const clash=recipes.find(r=>!r.deleted&&(r.codes||[]).some(x=>codeKey(x.color,x.digits)===key));
     if(clash){
       if(offerPairToClashingRecipe(clash,mat1,mat2,key)) return; // combination attached — no new recipe needed
       prefillCode=false; // declined — open the form without the code
@@ -1053,8 +1098,9 @@ function saveRecipe(){
   const itemNum=document.getElementById('f-item-num').value.trim();
   if(!name){alert('Item name is required.');return;}
   if(!itemNum){alert('Item number is required.');return;}
-  // Check for duplicate item number (only when adding new, or changing the number on edit)
-  if(itemNum!==(editingId||'')&&recipes.some(r=>r.id===itemNum)){
+  // Check for duplicate item number (only when adding new, or changing the number on edit).
+  // A tombstoned recipe doesn't block its number — saving over it revives the id.
+  if(itemNum!==(editingId||'')&&recipes.some(r=>r.id===itemNum&&!r.deleted)){
     alert(`Item number ${itemNum} is already used by "${recipes.find(r=>r.id===itemNum).name}".`);return;
   }
   const recipe={
@@ -1073,9 +1119,13 @@ function saveRecipe(){
   const prevAlt=editingId&&recipes.find(r=>r.id===editingId)?.altPairs;
   if(prevAlt?.length) recipe.altPairs=prevAlt;
   if(editingId){const i=recipes.findIndex(r=>r.id===editingId);if(i!==-1)recipes[i]=recipe;else recipes.push(recipe);}
-  else recipes.push(recipe);
-  // A saved recipe is table-verified — clear any provisional entries for its codes
-  for(const c of recipe.codes) delete provisionalCodes[codeKey(c.color,c.digits)];
+  else{const i=recipes.findIndex(r=>r.id===recipe.id);if(i!==-1)recipes[i]=recipe;else recipes.push(recipe);} // replaces a tombstone holding this id, if any
+  // A saved recipe is table-verified — tombstone any provisional entries for its
+  // codes so the clearing propagates instead of resurfacing from other devices
+  for(const c of recipe.codes){
+    const k=codeKey(c.color,c.digits), p=provisionalCodes[k];
+    if(p&&!p.deleted) provisionalCodes[k]={...p,deleted:true,updatedAt:Date.now()};
+  }
   save(); renderJournal(); closeModal();
   if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
 }
@@ -1084,9 +1134,17 @@ function editRecipe(id){
   openModal(id);
 }
 function deleteRecipe(id){
-  const r=recipes.find(x=>x.id===id);
-  if(!r||!confirm(`Delete "${r.name}"?`)) return;
-  recipes=recipes.filter(x=>x.id!==id);
+  const r=recipes.find(x=>x.id===id&&!x.deleted);
+  if(!r) return;
+  r.deleted=true; r.updatedAt=Date.now();
+  save(); renderJournal();
+  if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+  showUndoToast(`Deleted "${r.name}"`,()=>restoreRecipe(id));
+}
+function restoreRecipe(id){
+  const r=recipes.find(x=>x.id===id&&x.deleted);
+  if(!r) return;
+  delete r.deleted; r.updatedAt=Date.now(); // the restore must also win merges
   save(); renderJournal();
   if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
 }
@@ -1193,14 +1251,42 @@ document.addEventListener('click',e=>{
 
 let pendingImport = null; // {recipes, nullCodes, meta} awaiting user choice
 
-function save() {
-  lastUpdated = new Date().toISOString();
+// persist() writes localStorage without touching lastUpdated — for sync
+// bookkeeping (driveLastSynced etc). Content edits go through save(), which
+// stamps lastUpdated so the unsynced indicator can compare it to the last push.
+function persist() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     recipes, nullCodes, tokenData, customMaterials,
     culture, behemoths, challengeRecord, loomingChallenges, investigations, notePages, caveWall, provisionalCodes,
-    lastUpdated, driveFileId, driveLastSynced,
+    lastUpdated, driveFileId, driveToken, driveLastSynced,
   }));
+  updateSyncBadge();
 }
+
+function save() {
+  lastUpdated = new Date().toISOString();
+  persist();
+}
+
+// Local data newer than the last Drive push (or never pushed at all) is one
+// browser-storage eviction away from gone — surface that on the Drive button.
+function hasUnsyncedChanges() {
+  return !!lastUpdated && (!driveLastSynced || lastUpdated > driveLastSynced);
+}
+
+function updateSyncBadge() {
+  const b = document.getElementById('drive-sync-open-btn');
+  if (b) {
+    b.classList.toggle('has-unsynced', hasUnsyncedChanges());
+    b.title = hasUnsyncedChanges() ? 'There are local changes not yet synced to the group' : '';
+  }
+}
+
+// Nudge before leaving with unpushed changes — only for groups that actually
+// sync (a solo, Drive-less journal shouldn't nag on every close).
+window.addEventListener('beforeunload', e => {
+  if (driveFileId && hasUnsyncedChanges()) { e.preventDefault(); e.returnValue = ''; }
+});
 
 function fmtDate(iso) {
   if (!iso) return 'never';
@@ -1211,7 +1297,8 @@ function fmtDate(iso) {
 function buildExportPayload() {
   return {
     app: 'Stonesaga Crafting Journal',
-    version: 3,
+    version: 4, // v4: entries may carry {deleted:true} tombstones; v3 clients render them as live
+
     exportedAt: new Date().toISOString(),
     lastUpdated: lastUpdated || new Date().toISOString(),
     recipes,
@@ -1226,19 +1313,20 @@ function buildExportPayload() {
     caveWall,
     provisionalCodes,
     driveFileId,
+    driveToken,
   };
 }
 
 function journalEntryCount(d) {
-  return (d.behemoths?.length||0) + (d.challengeRecord?.length||0) + (d.loomingChallenges?.length||0)
-       + (d.investigations?.length||0) + (d.notePages?.length||0) + (d.caveWall?.length||0)
-       + (d.provisionalCodes ? Object.keys(d.provisionalCodes).length : 0)
+  return live(d.behemoths).length + live(d.challengeRecord).length + live(d.loomingChallenges).length
+       + live(d.investigations).length + live(d.notePages).length + live(d.caveWall).length
+       + liveKeys(d.provisionalCodes).length
        + (d.culture ? (d.culture.tribeName?1:0) + ['structures','mantlePowers','knowledgeCards','taboos','pigments']
-           .reduce((n,k)=>n+(d.culture[k]?.length||0),0) : 0);
+           .reduce((n,k)=>n+live(d.culture[k]).length,0) : 0);
 }
 
 function exportData() {
-  if (!recipes.length && !Object.keys(nullCodes).length && !customMaterials.length
+  if (!live(recipes).length && !liveKeys(nullCodes).length && !live(customMaterials).length
       && !journalEntryCount({culture, behemoths, challengeRecord, loomingChallenges, investigations, notePages, provisionalCodes})) {
     alert('Nothing to export.'); return;
   }
@@ -1259,20 +1347,26 @@ function detectImportConflicts(incoming, inNull) {
 
   // Build a lookup: code key → recipe id, for current data
   const codeToId = {};
-  for (const r of recipes)
+  for (const r of live(recipes))
     for (const c of (r.codes||[])) codeToId[codeKey(c.color,c.digits)] = r.id;
 
-  for (const r of incoming) {
-    const existing = recipes.find(x => x.id === r.id);
+  // Each conflict carries what's needed to apply a per-conflict resolution
+  // after the merge, plus `def` — the side the newest-wins merge would pick,
+  // used as the pre-selected choice.
+  for (const r of live(incoming)) {
+    const existing = recipes.find(x => x.id === r.id && !x.deleted);
     if (existing) {
+      const def = (existing.updatedAt||0) >= (r.updatedAt||0) ? 'yours' : 'theirs';
       if (existing.name !== r.name)
-        conflicts.push({type:'name', id:r.id, yours:existing.name, theirs:r.name});
+        conflicts.push({type:'name', id:r.id, yours:existing.name, theirs:r.name, def});
       const m1 = norm(existing.mat1Name||'')!==norm(r.mat1Name||'');
       const m2 = norm(existing.mat2Name||'')!==norm(r.mat2Name||'');
       if (m1||m2)
-        conflicts.push({type:'materials', id:r.id, name:r.name,
+        conflicts.push({type:'materials', id:r.id, name:r.name, def,
           yours:`${existing.mat1Name||'?'} + ${existing.mat2Name||'?'}`,
-          theirs:`${r.mat1Name||'?'} + ${r.mat2Name||'?'}`});
+          theirs:`${r.mat1Name||'?'} + ${r.mat2Name||'?'}`,
+          yoursPair:{mat1Name:existing.mat1Name, mat1Cat:existing.mat1Cat, mat2Name:existing.mat2Name, mat2Cat:existing.mat2Cat},
+          theirsPair:{mat1Name:r.mat1Name, mat1Cat:r.mat1Cat, mat2Name:r.mat2Name, mat2Cat:r.mat2Cat}});
     }
 
     for (const c of (r.codes||[])) {
@@ -1280,43 +1374,120 @@ function detectImportConflicts(incoming, inNull) {
       // Code belongs to a different item in current data
       if (codeToId[k] && codeToId[k] !== r.id) {
         const owner = recipes.find(x=>x.id===codeToId[k]);
-        conflicts.push({type:'code-clash', code:k,
+        conflicts.push({type:'code-clash', code:k, def:'yours',
+          yoursId:codeToId[k], theirsId:r.id,
           yours:`${owner?.name||codeToId[k]}`, theirs:r.name});
       }
       // Code is "Nothing" in current data but a discovery in the file
-      if (nullCodes[k])
-        conflicts.push({type:'discovery-vs-nothing', code:k, theirs:r.name, direction:'file-is-discovery'});
+      if (nullCodes[k] && !nullCodes[k].deleted)
+        conflicts.push({type:'discovery-vs-nothing', code:k, theirs:r.name, theirsId:r.id, direction:'file-is-discovery', def:'discovery'});
     }
   }
 
   // Code is a discovery in current data but "Nothing" in the file
-  for (const k of Object.keys(inNull)) {
-    const owner = recipes.find(r=>(r.codes||[]).some(c=>codeKey(c.color,c.digits)===k));
+  for (const k of liveKeys(inNull)) {
+    const owner = recipes.find(r=>!r.deleted&&(r.codes||[]).some(c=>codeKey(c.color,c.digits)===k));
     if (owner)
-      conflicts.push({type:'discovery-vs-nothing', code:k, yours:owner.name, direction:'file-is-nothing'});
+      conflicts.push({type:'discovery-vs-nothing', code:k, yours:owner.name, yoursId:owner.id, direction:'file-is-nothing', def:'discovery'});
   }
 
   return conflicts;
 }
 
+function cfRadio(i, value, label, checked){
+  return `<label class="cf-opt"><input type="radio" name="cf-${i}" value="${value}"${checked?' checked':''} onchange="cfChanged(${i})"> ${label}</label>`;
+}
+
+// Each conflict renders as a choice; the picks are read back from the DOM
+// when Merge is clicked. The pre-selected side is what newest-wins would do.
 function renderConflicts(conflicts) {
   const el = document.getElementById('im-conflicts');
   if (!conflicts.length) { el.innerHTML=''; return; }
-  const rows = conflicts.map(c => {
+  const rows = conflicts.map((c,i) => {
+    let desc='', opts='';
     switch(c.type) {
       case 'name':
-        return `<li><strong>${esc(c.id)}:</strong> name differs — yours <em>${esc(c.yours)}</em>, file <em>${esc(c.theirs)}</em></li>`;
+        desc=`<strong>${esc(c.id)}:</strong> name differs`;
+        opts=cfRadio(i,'yours',`Yours: <em>${esc(c.yours)}</em>`,c.def==='yours')
+            +cfRadio(i,'theirs',`File: <em>${esc(c.theirs)}</em>`,c.def==='theirs')
+            +`<input class="form-control cf-name-input" id="cf-name-${i}" value="${esc(c.def==='yours'?c.yours:c.theirs)}" title="Edit to use a different name entirely">`;
+        break;
       case 'materials':
-        return `<li><strong>${esc(c.id)} ${esc(c.name)}:</strong> materials differ — yours <em>${esc(c.yours)}</em>, file <em>${esc(c.theirs)}</em></li>`;
+        desc=`<strong>${esc(c.id)} ${esc(c.name)}:</strong> materials differ`;
+        opts=cfRadio(i,'yours',`Yours: <em>${esc(c.yours)}</em>`,c.def==='yours')
+            +cfRadio(i,'theirs',`File: <em>${esc(c.theirs)}</em>`,c.def==='theirs');
+        break;
       case 'code-clash':
-        return `<li><strong>${esc(c.code)}:</strong> yours belongs to <em>${esc(c.yours)}</em>, file assigns it to <em>${esc(c.theirs)}</em></li>`;
-      case 'discovery-vs-nothing':
-        return c.direction==='file-is-discovery'
-          ? `<li><strong>${esc(c.code)}:</strong> you marked as dead-end, file records it as <em>${esc(c.theirs)}</em></li>`
-          : `<li><strong>${esc(c.code)}:</strong> you have it as <em>${esc(c.yours)}</em>, file marks it as dead-end</li>`;
+        desc=`<strong>${esc(c.code)}:</strong> recorded on two different items`;
+        opts=cfRadio(i,'yours',`Keep on <em>${esc(c.yours)}</em> (yours)`,c.def==='yours')
+            +cfRadio(i,'theirs',`Move to <em>${esc(c.theirs)}</em> (file)`,c.def==='theirs');
+        break;
+      case 'discovery-vs-nothing': {
+        const item = c.direction==='file-is-discovery' ? c.theirs : c.yours;
+        const side = c.direction==='file-is-discovery' ? 'file'   : 'yours';
+        desc=`<strong>${esc(c.code)}:</strong> a discovery on one side, a dead-end on the other`;
+        opts=cfRadio(i,'discovery',`Keep item <em>${esc(item)}</em> (${side})`,c.def==='discovery')
+            +cfRadio(i,'nothing','Keep dead-end',c.def==='nothing');
+        break;
+      }
     }
+    return `<li>${desc}<div class="cf-opts">${opts}</div></li>`;
   }).join('');
-  el.innerHTML = `<div class="im-conflict-header">⚠ ${conflicts.length} conflict${conflicts.length>1?'s':''} found</div><ul class="im-conflict-list">${rows}</ul>`;
+  el.innerHTML = `<div class="im-conflict-header">⚠ ${conflicts.length} conflict${conflicts.length>1?'s':''} — pick a side for each (applied on Merge)</div><ul class="im-conflict-list">${rows}</ul>`;
+}
+
+// Keep a name conflict's editable input in step with the chosen side
+function cfChanged(i){
+  const c = pendingImport?.conflicts?.[i];
+  if (!c || c.type !== 'name') return;
+  const pick = document.querySelector(`input[name="cf-${i}"]:checked`)?.value;
+  const input = document.getElementById(`cf-name-${i}`);
+  if (input) input.value = pick === 'yours' ? c.yours : c.theirs;
+}
+
+// Runs after the merge: forces each conflict's chosen value onto the merged
+// entry. Anything changed gets a fresh updatedAt so the resolution outranks
+// BOTH sides on future syncs — otherwise the losing copy re-conflicts.
+function applyConflictResolutions(conflicts) {
+  const byId = id => recipes.find(r => r.id === id);
+  const dropCode = (r, code) => {
+    if (!r) return;
+    const before = (r.codes||[]).length;
+    r.codes = (r.codes||[]).filter(x => codeKey(x.color,x.digits) !== code);
+    if (r.codes.length !== before) r.updatedAt = Date.now();
+  };
+  conflicts.forEach((c,i) => {
+    const pick = document.querySelector(`input[name="cf-${i}"]:checked`)?.value || c.def;
+    switch(c.type) {
+      case 'name': {
+        const r = byId(c.id); if (!r) break;
+        const name = (document.getElementById(`cf-name-${i}`)?.value||'').trim() || (pick==='yours'?c.yours:c.theirs);
+        if (r.name !== name) { r.name = name; r.updatedAt = Date.now(); }
+        break;
+      }
+      case 'materials': {
+        const r = byId(c.id); if (!r) break;
+        const m = pick==='yours' ? c.yoursPair : c.theirsPair;
+        if (m && (r.mat1Name!==m.mat1Name || r.mat2Name!==m.mat2Name)) { Object.assign(r, m); r.updatedAt = Date.now(); }
+        break;
+      }
+      case 'code-clash':
+        // the losing recipe gives up the code
+        dropCode(byId(pick==='yours' ? c.theirsId : c.yoursId), c.code);
+        break;
+      case 'discovery-vs-nothing': {
+        const recId = c.direction==='file-is-discovery' ? c.theirsId : c.yoursId;
+        const n = nullCodes[c.code];
+        if (pick === 'discovery') {
+          if (n && !n.deleted) nullCodes[c.code] = {...n, deleted:true, updatedAt:Date.now()};
+        } else {
+          dropCode(byId(recId), c.code);
+          if (n && n.deleted) { const nn = {...n, updatedAt:Date.now()}; delete nn.deleted; nullCodes[c.code] = nn; }
+        }
+        break;
+      }
+    }
+  });
 }
 
 function importData(event) {
@@ -1328,21 +1499,23 @@ function importData(event) {
       const incoming = d.recipes || (Array.isArray(d) ? d : null);
       if (!incoming) { alert('Unrecognised file format.'); return; }
       const inNull = d.nullCodes || {};
-      pendingImport = { recipes: incoming, nullCodes: inNull, customMaterials: d.customMaterials || [], driveFileId: d.driveFileId || null, meta: d };
+      pendingImport = { recipes: incoming, nullCodes: inNull, customMaterials: d.customMaterials || [], driveFileId: d.driveFileId || null, driveToken: d.driveToken || null, meta: d };
 
       const fileUpdated = d.lastUpdated ? fmtDate(d.lastUpdated) : (d.exportedAt ? fmtDate(d.exportedAt) : 'unknown');
-      const nullCount   = Object.keys(inNull).length;
+      const nullCount   = liveKeys(inNull).length;
       document.getElementById('im-summary').innerHTML =
         `<strong>File:</strong> ${esc(file.name)}<br>` +
         `<strong>Last updated:</strong> ${esc(fileUpdated)}<br>` +
-        `<strong>Recipes:</strong> ${incoming.length} &nbsp;·&nbsp; <strong>Dead-end codes:</strong> ${nullCount}` +
-        (journalEntryCount(d) ? ` &nbsp;·&nbsp; <strong>Journal entries:</strong> ${journalEntryCount(d)}` : '');
+        `<strong>Recipes:</strong> ${live(incoming).length} &nbsp;·&nbsp; <strong>Dead-end codes:</strong> ${nullCount}` +
+        (journalEntryCount(d) ? ` &nbsp;·&nbsp; <strong>Journal entries:</strong> ${journalEntryCount(d)}` : '') +
+        ((d.version||0) > 4 ? `<br><em>⚠ This file is from a newer version of the app — consider refreshing before importing.</em>` : '');
 
       const curUpdated = fmtDate(lastUpdated);
       document.getElementById('im-current').innerHTML =
-        `Your current data: ${recipes.length} recipe(s), ${Object.keys(nullCodes).length} dead-end code(s) — last updated ${esc(curUpdated)}`;
+        `Your current data: ${live(recipes).length} recipe(s), ${liveKeys(nullCodes).length} dead-end code(s) — last updated ${esc(curUpdated)}`;
 
-      renderConflicts(detectImportConflicts(incoming, inNull));
+      pendingImport.conflicts = detectImportConflicts(incoming, inNull);
+      renderConflicts(pendingImport.conflicts);
       document.getElementById('import-overlay').classList.remove('hidden');
     } catch { alert('Could not parse JSON file.'); }
   };
@@ -1369,6 +1542,17 @@ function mergeByKey(local, incoming) {
   return out;
 }
 
+// customMaterials have no ids — key by normalised name, newer updatedAt wins
+// (legacy entries without a timestamp count as 0, so any real edit beats them).
+function mergeByName(local, incoming) {
+  const map = Object.fromEntries(local.map(m => [norm(m.name), m]));
+  for (const m of incoming || []) {
+    const k = norm(m.name||''), cur = map[k];
+    if (!cur || (m.updatedAt||0) > (cur.updatedAt||0)) map[k] = m;
+  }
+  return Object.values(map);
+}
+
 function mergeCulture(local, incoming) {
   if (!incoming) return local;
   const incomingNewer = (incoming.updatedAt||0) > (local.updatedAt||0);
@@ -1393,9 +1577,8 @@ function doImport(mode) {
     // beats them). Previously incoming always won, which meant a local rename
     // was reverted by the very sync meant to publish it.
     recipes = mergeById(recipes, incoming);
-    Object.assign(nullCodes, inNull);
-    const matNames = new Set(customMaterials.map(m => norm(m.name)));
-    inMats.forEach(m => { if (!matNames.has(norm(m.name))) customMaterials.push(m); });
+    nullCodes = mergeByKey(nullCodes, inNull);
+    customMaterials = mergeByName(customMaterials, inMats);
     culture           = mergeCulture(culture, meta.culture);
     behemoths         = mergeById(behemoths,         meta.behemoths);
     challengeRecord   = mergeById(challengeRecord,   meta.challengeRecord);
@@ -1404,6 +1587,7 @@ function doImport(mode) {
     notePages         = mergeById(notePages,         meta.notePages);
     caveWall          = mergeById(caveWall,          meta.caveWall);
     provisionalCodes  = mergeByKey(provisionalCodes, meta.provisionalCodes);
+    applyConflictResolutions(pendingImport.conflicts || []);
   } else {
     recipes         = incoming;
     nullCodes       = inNull;
@@ -1417,7 +1601,12 @@ function doImport(mode) {
     caveWall          = meta.caveWall          || [];
     provisionalCodes  = meta.provisionalCodes  || {};
   }
+  // Adopt the group's Drive connection: the file id if we have none, and the
+  // sync token whenever the incoming data belongs to our file — tokens never
+  // rotate, so a mismatch means ours is a stale self-minted one and the
+  // group's copy wins.
   if (!driveFileId && inDriveId) driveFileId = inDriveId;
+  if (inDriveId && inDriveId === driveFileId && pendingImport.driveToken) driveToken = pendingImport.driveToken;
   pendingImport = null;
   rebuildMaterials();
   save(); renderJournal();
@@ -1495,11 +1684,34 @@ function load() {
       provisionalCodes  = d.provisionalCodes  || {};
       lastUpdated     = d.lastUpdated     || null;
       driveFileId     = d.driveFileId     || null;
+      driveToken      = d.driveToken      || null;
       driveLastSynced = d.driveLastSynced || null;
     }
   } catch { /* corrupted storage — start fresh */ }
+  gcTombstones();
   rebuildMaterials();
   seedTokenDataFromMarks();
+}
+
+// Tombstones older than this are dropped on load — long enough for every
+// device in the group to have synced the deletion by then.
+const TOMBSTONE_MAX_AGE = 90*24*60*60*1000;
+
+function gcTombstones() {
+  const cutoff = Date.now() - TOMBSTONE_MAX_AGE;
+  const fresh = e => !(e?.deleted && (e.updatedAt||0) < cutoff);
+  recipes           = recipes.filter(fresh);
+  behemoths         = behemoths.filter(fresh);
+  challengeRecord   = challengeRecord.filter(fresh);
+  loomingChallenges = loomingChallenges.filter(fresh);
+  investigations    = investigations.filter(fresh);
+  notePages         = notePages.filter(fresh);
+  caveWall          = caveWall.filter(fresh);
+  customMaterials   = customMaterials.filter(fresh);
+  for (const k of ['structures','mantlePowers','knowledgeCards','taboos','pigments'])
+    culture[k] = (culture[k]||[]).filter(fresh);
+  for (const o of [nullCodes, provisionalCodes])
+    for (const k of Object.keys(o)) if (!fresh(o[k])) delete o[k];
 }
 
 // ═══════════════════════════════════════════════════
@@ -1548,8 +1760,17 @@ function closeAddMaterialModal() { document.getElementById('add-material-overlay
 function editCustomMaterial(name) { openAddMaterialModal(name); }
 
 function deleteCustomMaterial(name) {
-  if (!confirm(`Delete "${name}"?`)) return;
-  customMaterials = customMaterials.filter(m => norm(m.name) !== norm(name));
+  const m = customMaterials.find(x => norm(x.name) === norm(name) && !x.deleted);
+  if (!m) return;
+  m.deleted = true; m.updatedAt = Date.now();
+  rebuildMaterials(); save(); renderMaterials();
+  showUndoToast(`Deleted "${name}"`, () => restoreCustomMaterial(name));
+}
+
+function restoreCustomMaterial(name) {
+  const m = customMaterials.find(x => norm(x.name) === norm(name) && x.deleted);
+  if (!m) return;
+  delete m.deleted; m.updatedAt = Date.now(); // the restore must also win merges
   rebuildMaterials(); save(); renderMaterials();
 }
 
@@ -1577,6 +1798,7 @@ function saveCustomMaterial() {
     image:     (document.getElementById('am-image').value.trim()     || null),
     marks:     hasMarks ? marks : null,
     notes:     (document.getElementById('am-notes').value.trim()     || null),
+    updatedAt: Date.now(), // newest copy wins on sync merges
   };
 
   if (editingMaterialName) {
@@ -1589,7 +1811,10 @@ function saveCustomMaterial() {
     if (idx !== -1) customMaterials[idx] = entry; else customMaterials.push(entry);
   } else {
     if (KM[norm(name)]) { alert(`"${name}" is already a known material.`); return; }
-    customMaterials.push(entry);
+    // KM excludes tombstones, so a matching index here is a deleted custom
+    // material being recreated — replace it rather than duplicating the name
+    const idx = customMaterials.findIndex(m => norm(m.name) === norm(name));
+    if (idx !== -1) customMaterials[idx] = entry; else customMaterials.push(entry);
   }
 
   rebuildMaterials(); save(); closeAddMaterialModal(); renderMaterials();
@@ -1614,8 +1839,10 @@ function renderMaterials() {
 
   const grid = document.getElementById('materials-grid');
   if (!grid) return;
+  const deletedBlock = recentlyDeletedHtml(customMaterials.filter(m => m.deleted).map(m =>
+    ({label: esc(m.name), restore: `restoreCustomMaterial('${esc(m.name)}')`})));
   if (!list.length) {
-    grid.innerHTML = `<div class="empty-state"><div class="glyph">◈</div><h2>No materials found</h2><p>Adjust your search or add a new material.</p></div>`;
+    grid.innerHTML = `<div class="empty-state"><div class="glyph">◈</div><h2>No materials found</h2><p>Adjust your search or add a new material.</p></div>` + deletedBlock;
     return;
   }
 
@@ -1649,7 +1876,7 @@ function renderMaterials() {
         </div>` : ''}
       </div>
     </div>`;
-  }).join('');
+  }).join('') + deletedBlock;
 }
 
 // ═══════════════════════════════════════════════════
@@ -1677,7 +1904,8 @@ function renderDriveModal() {
   const driveLink = `https://drive.google.com/file/d/${encodeURIComponent(driveFileId)}/view?usp=sharing`;
   statusEl.innerHTML =
     `<div class="drive-file-row">Group file: <a href="${driveLink}" target="_blank" rel="noopener" class="drive-file-link">View in Drive ↗</a></div>` +
-    `<div class="drive-synced">Last synced: ${esc(driveLastSynced ? fmtDate(driveLastSynced) : 'never')}</div>`;
+    `<div class="drive-synced">Last synced: ${esc(driveLastSynced ? fmtDate(driveLastSynced) : 'never')}</div>` +
+    (hasUnsyncedChanges() ? `<div class="drive-unsynced-note">● You have local changes not yet synced to the group.</div>` : '');
   actionsEl.innerHTML = '<button class="btn btn-primary" id="drive-sync-btn" onclick="syncWithDrive()">Sync</button>';
 }
 
@@ -1692,6 +1920,7 @@ async function createDriveFile() {
     const d = await res.json();
     if (d.error) throw new Error(d.error);
     driveFileId = d.fileId;
+    driveToken  = d.token || null;
     await _pushToDrive();
     renderDriveModal();
   } catch(err) {
@@ -1701,14 +1930,19 @@ async function createDriveFile() {
 }
 
 async function _pushToDrive() {
+  // Pre-token group file (created before auth existed): mint a token here —
+  // the script stores it on first push, and the group JSON distributes it.
+  if (!driveToken) driveToken = crypto.randomUUID();
   const res = await fetch(DRIVE_SYNC_URL, {
     method: 'POST',
-    body: JSON.stringify({ action: 'push', fileId: driveFileId, data: buildExportPayload() }),
+    body: JSON.stringify({ action: 'push', fileId: driveFileId, token: driveToken, data: buildExportPayload() }),
   });
   const d = await res.json();
   if (d.error) throw new Error(d.error);
-  driveLastSynced = new Date().toISOString();
-  save();
+  // Mark exactly the pushed state as synced — a fresh timestamp here would
+  // leave lastUpdated forever "newer" once save() re-stamps it.
+  driveLastSynced = lastUpdated || new Date().toISOString();
+  persist();
 }
 
 async function syncWithDrive() {
@@ -1734,17 +1968,18 @@ function _loadDriveImport(d) {
   const incoming = d.recipes || (Array.isArray(d) ? d : null);
   if (!incoming) { drivePostImport = false; alert('Unrecognised format received from Drive.'); return; }
   const inNull = d.nullCodes || {};
-  pendingImport = { recipes: incoming, nullCodes: inNull, customMaterials: d.customMaterials || [], driveFileId: d.driveFileId || null, meta: d };
+  pendingImport = { recipes: incoming, nullCodes: inNull, customMaterials: d.customMaterials || [], driveFileId: d.driveFileId || null, driveToken: d.driveToken || null, meta: d };
 
   const fileUpdated = d.lastUpdated ? fmtDate(d.lastUpdated) : (d.exportedAt ? fmtDate(d.exportedAt) : 'unknown');
   document.getElementById('im-summary').innerHTML =
     `<strong>Source:</strong> Drive<br>` +
     `<strong>Last updated:</strong> ${esc(fileUpdated)}<br>` +
-    `<strong>Recipes:</strong> ${incoming.length} &nbsp;·&nbsp; <strong>Dead-end codes:</strong> ${Object.keys(inNull).length}` +
+    `<strong>Recipes:</strong> ${live(incoming).length} &nbsp;·&nbsp; <strong>Dead-end codes:</strong> ${liveKeys(inNull).length}` +
     (journalEntryCount(d) ? ` &nbsp;·&nbsp; <strong>Journal entries:</strong> ${journalEntryCount(d)}` : '');
   document.getElementById('im-current').innerHTML =
-    `Your current data: ${recipes.length} recipe(s), ${Object.keys(nullCodes).length} dead-end code(s) — last updated ${esc(fmtDate(lastUpdated))}`;
-  renderConflicts(detectImportConflicts(incoming, inNull));
+    `Your current data: ${live(recipes).length} recipe(s), ${liveKeys(nullCodes).length} dead-end code(s) — last updated ${esc(fmtDate(lastUpdated))}`;
+  pendingImport.conflicts = detectImportConflicts(incoming, inNull);
+  renderConflicts(pendingImport.conflicts);
   document.getElementById('import-overlay').classList.remove('hidden');
 }
 
@@ -1853,12 +2088,28 @@ function saveJournalEntry(){
   save(); closeJournalEntry(); spec.render();
 }
 
+function jeLabelOf(e){return e.name||e.title||e.omen||e.text||'entry';}
+
 function deleteJournalEntry(section, id){
   const spec=JOURNAL_SECTIONS[section];
-  const e=spec.get().find(x=>x.id===id);
-  if(!e||!confirm(`Delete this ${spec.label.toLowerCase()}?`)) return;
-  spec.set(spec.get().filter(x=>x.id!==id));
+  const e=spec.get().find(x=>x.id===id&&!x.deleted);
+  if(!e) return;
+  e.deleted=true; e.updatedAt=Date.now();
   save(); spec.render();
+  showUndoToast(`Deleted ${spec.label.toLowerCase()} "${jeLabelOf(e)}"`,()=>restoreJournalEntry(section,id));
+}
+
+function restoreJournalEntry(section, id){
+  const spec=JOURNAL_SECTIONS[section];
+  const e=spec.get().find(x=>x.id===id&&x.deleted);
+  if(!e) return;
+  delete e.deleted; e.updatedAt=Date.now(); // the restore must also win merges
+  save(); spec.render();
+}
+
+function deletedJournalItems(section, list){
+  return (list||[]).filter(e=>e.deleted).map(e=>
+    ({label:esc(jeLabelOf(e)), restore:`restoreJournalEntry('${section}','${e.id}')`}));
 }
 
 function journalCardActions(section, id){
@@ -1878,12 +2129,16 @@ function saveTribeName(v){
 function renderCulture(){
   document.getElementById('culture-tribe').value=culture.tribeName||'';
   const blocks=[
-    ['structure','Structures',culture.structures,e=>`<strong>${esc(e.name)}</strong>${e.notes?` — ${esc(e.notes)}`:''}`],
-    ['mantle','Mantle Powers',culture.mantlePowers,e=>`<strong>${esc(e.name)}</strong>${e.description?` — ${esc(e.description)}`:''}`],
-    ['knowledge','Knowledge Cards',culture.knowledgeCards,e=>`${e.cardId?`<span class="recipe-code" style="font-size:.75rem">${esc(e.cardId)}</span> `:''}<strong>${esc(e.name)}</strong>`],
-    ['taboo','Taboos',culture.taboos,e=>esc(e.text)],
-    ['pigment','Pigments',culture.pigments,e=>esc(e.name)],
+    ['structure','Structures',live(culture.structures),e=>`<strong>${esc(e.name)}</strong>${e.notes?` — ${esc(e.notes)}`:''}`],
+    ['mantle','Mantle Powers',live(culture.mantlePowers),e=>`<strong>${esc(e.name)}</strong>${e.description?` — ${esc(e.description)}`:''}`],
+    ['knowledge','Knowledge Cards',live(culture.knowledgeCards),e=>`${e.cardId?`<span class="recipe-code" style="font-size:.75rem">${esc(e.cardId)}</span> `:''}<strong>${esc(e.name)}</strong>`],
+    ['taboo','Taboos',live(culture.taboos),e=>esc(e.text)],
+    ['pigment','Pigments',live(culture.pigments),e=>esc(e.name)],
   ];
+  const deletedBlock=recentlyDeletedHtml([
+    ['structure',culture.structures],['mantle',culture.mantlePowers],['knowledge',culture.knowledgeCards],
+    ['taboo',culture.taboos],['pigment',culture.pigments],
+  ].flatMap(([sec,list])=>deletedJournalItems(sec,list)));
   document.getElementById('culture-lists').innerHTML=blocks.map(([sec,title,list,fmt])=>`
     <div class="culture-block">
       <h3>${title}<button class="btn btn-sm" onclick="openJournalEntry('${sec}')">+ Add</button></h3>
@@ -1894,13 +2149,14 @@ function renderCulture(){
           <button class="btn btn-sm btn-danger" onclick="deleteJournalEntry('${sec}','${e.id}')">Del</button>
         </div>`).join('')
       :'<p class="journal-empty">None yet.</p>'}
-    </div>`).join('');
+    </div>`).join('')+deletedBlock;
 }
 
 // ── Behemoths ──
 function renderBehemoths(){
   const el=document.getElementById('behemoths-list');
-  el.innerHTML=behemoths.length?behemoths.map(e=>`
+  const list=live(behemoths);
+  el.innerHTML=(list.length?list.map(e=>`
     <div class="journal-card">
       <div class="journal-card-title">${esc(e.name)}</div>
       ${e.demeanor?`<div class="journal-card-sub">Demeanor: ${esc(e.demeanor)}</div>`:''}
@@ -1909,15 +2165,18 @@ function renderBehemoths(){
       ${e.notes?`<div class="journal-card-body">${esc(e.notes)}</div>`:''}
       ${journalCardActions('behemoth',e.id)}
     </div>`).join('')
-  :'<p class="journal-empty">No behemoths encountered yet.</p>';
+  :'<p class="journal-empty">No behemoths encountered yet.</p>')
+  +recentlyDeletedHtml(deletedJournalItems('behemoth',behemoths));
 }
 
 // ── Challenge Record (grouped by epoch, newest first, newest open) ──
 function renderChallenges(){
   const el=document.getElementById('challenges-list');
-  if(!challengeRecord.length){el.innerHTML='<p class="journal-empty">No challenges recorded yet.</p>';return;}
+  const list=live(challengeRecord);
+  const deletedBlock=recentlyDeletedHtml(deletedJournalItems('challenge',challengeRecord));
+  if(!list.length){el.innerHTML='<p class="journal-empty">No challenges recorded yet.</p>'+deletedBlock;return;}
   const byEpoch={};
-  for(const c of challengeRecord)(byEpoch[c.epoch]??=[]).push(c);
+  for(const c of list)(byEpoch[c.epoch]??=[]).push(c);
   const epochs=Object.keys(byEpoch).sort((a,b)=>Number(b)-Number(a));
   el.innerHTML=epochs.map((ep,i)=>`
     <details class="epoch-group"${i===0?' open':''}>
@@ -1930,11 +2189,11 @@ function renderChallenges(){
           ${journalCardActions('challenge',c.id)}
         </div>`).join('')}
       </div>
-    </details>`).join('');
+    </details>`).join('')+deletedBlock;
 }
 
 // ── Looming Challenges (ordered, ▲▼ reorder) ──
-function loomingSorted(){return [...loomingChallenges].sort((a,b)=>(a.order??0)-(b.order??0));}
+function loomingSorted(){return live(loomingChallenges).sort((a,b)=>(a.order??0)-(b.order??0));}
 
 function moveLooming(id, dir){
   const s=loomingSorted();
@@ -1962,19 +2221,22 @@ function renderLooming(){
       </div>
     </div>`).join('')
   :'<p class="journal-empty">No looming challenges.</p>';
+  el.innerHTML+=recentlyDeletedHtml(deletedJournalItems('looming',loomingChallenges));
 }
 
 // ── Investigations ──
 function renderInvestigations(){
   const el=document.getElementById('investigations-list');
-  el.innerHTML=investigations.length?investigations.map(e=>`
+  const list=live(investigations);
+  el.innerHTML=(list.length?list.map(e=>`
     <div class="journal-card">
       <div class="journal-card-title">${esc(e.omen)}</div>
       ${e.cardId?`<div class="journal-card-sub">Card ${esc(e.cardId)}</div>`:''}
       ${e.notes?`<div class="journal-card-body">${esc(e.notes)}</div>`:''}
       ${journalCardActions('investigation',e.id)}
     </div>`).join('')
-  :'<p class="journal-empty">No investigations recorded yet.</p>';
+  :'<p class="journal-empty">No investigations recorded yet.</p>')
+  +recentlyDeletedHtml(deletedJournalItems('investigation',investigations));
 }
 
 // ── Cave Wall ──────────────────────────────────────
@@ -2038,19 +2300,28 @@ function cwSvg(strokes){
 function renderCaveWall(){
   const el=document.getElementById('cave-wall-list');
   // Creation order, oldest first — the wall fills up as the saga unfolds
-  const list=[...caveWall].sort((a,b)=>(a.addedAt||0)-(b.addedAt||0));
-  el.innerHTML=list.length?list.map(e=>`
+  const list=live(caveWall).sort((a,b)=>(a.addedAt||0)-(b.addedAt||0));
+  el.innerHTML=(list.length?list.map(e=>`
     <div class="cave-card">
       <div class="cave-thumb" onclick="openCaveEditor('${e.id}')" title="Tap to edit">${cwSvg(e.strokes||[])}</div>
       <div class="cave-card-name">${esc(e.name)}<button class="cave-del" onclick="deleteCaveDrawing('${e.id}')" title="Delete">×</button></div>
     </div>`).join('')
-  :'<p class="journal-empty">Nothing painted on the cave wall yet.</p>';
+  :'<p class="journal-empty">Nothing painted on the cave wall yet.</p>')
+  +recentlyDeletedHtml(caveWall.filter(e=>e.deleted).map(e=>
+    ({label:esc(e.name), restore:`restoreCaveDrawing('${e.id}')`})));
 }
 
 function deleteCaveDrawing(id){
-  const e=caveWall.find(x=>x.id===id);
-  if(!e||!confirm(`Delete "${e.name}"?`)) return;
-  caveWall=caveWall.filter(x=>x.id!==id);
+  const e=caveWall.find(x=>x.id===id&&!x.deleted);
+  if(!e) return;
+  e.deleted=true; e.updatedAt=Date.now();
+  save(); renderCaveWall();
+  showUndoToast(`Deleted "${e.name}"`,()=>restoreCaveDrawing(id));
+}
+function restoreCaveDrawing(id){
+  const e=caveWall.find(x=>x.id===id&&x.deleted);
+  if(!e) return;
+  delete e.deleted; e.updatedAt=Date.now(); // the restore must also win merges
   save(); renderCaveWall();
 }
 
@@ -2218,13 +2489,15 @@ function cwInitCanvas(){
 // ── Notes ──
 function renderNotes(){
   const el=document.getElementById('notes-list');
-  el.innerHTML=notePages.length?notePages.map(e=>`
+  const list=live(notePages);
+  el.innerHTML=(list.length?list.map(e=>`
     <div class="journal-card">
       <div class="journal-card-title">${esc(e.title)}</div>
       ${e.body?`<div class="journal-card-body">${esc(e.body)}</div>`:''}
       ${journalCardActions('note',e.id)}
     </div>`).join('')
-  :'<p class="journal-empty">No notes yet.</p>';
+  :'<p class="journal-empty">No notes yet.</p>')
+  +recentlyDeletedHtml(deletedJournalItems('note',notePages));
 }
 
 // ═══════════════════════════════════════════════════
@@ -2249,4 +2522,5 @@ document.addEventListener('keydown',e=>{
   load();
   renderJournal();
   renderTokenNotice();
+  updateSyncBadge();
 })();

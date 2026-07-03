@@ -22,12 +22,16 @@
     <div class="subtitle">Crafting Journal</div>
   </div>
   <div class="header-actions">
-    <button class="btn" onclick="triggerImport()">Import JSON</button>
-    <button class="btn" onclick="exportData()">Export JSON</button>
-    <button class="btn" onclick="openDriveModal()">Drive Sync</button>
-    <button class="btn" onclick="triggerImportTokens()" title="Load token pip data JSON">Load Token Data</button>
-    <button class="btn" onclick="triggerImportCodes()" title="Import unverified crafting codes from a community CSV (Code;Flavor;Game Text;Item Name)">Import Codes CSV</button>
-    <button class="btn btn-primary" onclick="openModal()">+ Add Recipe</button>
+    <div class="header-menu">
+      <button class="btn" id="header-menu-toggle" onclick="toggleHeaderMenu()">Menu ▾</button>
+      <div class="header-menu-panel" id="header-menu-panel">
+        <button class="btn" onclick="triggerImport()">Import JSON</button>
+        <button class="btn" onclick="exportData()">Export JSON</button>
+        <button class="btn" onclick="triggerImportTokens()" title="Load token pip data JSON">Load Token Data</button>
+        <button class="btn" onclick="triggerImportCodes()" title="Import unverified crafting codes from a community CSV (Code;Flavor;Game Text;Item Name)">Import Codes CSV</button>
+      </div>
+    </div>
+    <button class="btn" id="drive-sync-open-btn" onclick="openDriveModal()">Drive Sync</button>
     <button class="btn" onclick="openHelp()" title="Help">?</button>
     <input type="file" id="import-file" accept=".json" onchange="importData(event)">
     <input type="file" id="import-tokens-file" accept=".json" onchange="importTokenData(event)">
@@ -45,13 +49,8 @@
     <button class="tab-btn active" onclick="switchTab('explorer',this)">Crafting</button>
     <button class="tab-btn" onclick="switchTab('journal',this)">Recipes</button>
     <button class="tab-btn" onclick="switchTab('materials',this)">Materials</button>
-    <button class="tab-btn" onclick="switchTab('culture',this)">Culture</button>
-    <button class="tab-btn" onclick="switchTab('behemoths',this)">Behemoths</button>
-    <button class="tab-btn" onclick="switchTab('challenges',this)">Challenges</button>
-    <button class="tab-btn" onclick="switchTab('looming',this)">Looming</button>
-    <button class="tab-btn" onclick="switchTab('investigations',this)">Investigations</button>
+    <button class="tab-btn" onclick="switchTab('journal-group',this)">Journal</button>
     <button class="tab-btn" onclick="switchTab('cave-wall',this)">Cave Wall</button>
-    <button class="tab-btn" onclick="switchTab('notes',this)">Notes</button>
     <!-- Deferred tab (see app.js TODO block): Valley Map -->
   </div>
 
@@ -66,48 +65,61 @@
     <div class="cave-grid" id="cave-wall-list"></div>
   </div>
 
-  <!-- CULTURE -->
-  <div class="tab-panel" id="tab-culture">
-    <div class="form-group" style="max-width:420px">
-      <label>Tribe Name</label>
-      <input class="form-control" id="culture-tribe" placeholder="Name your tribe…" onchange="saveTribeName(this.value)">
+  <!-- JOURNAL GROUP (Culture / Behemoths / Challenges / Looming / Investigations / Notes) -->
+  <div class="tab-panel" id="tab-journal-group">
+    <div class="subtabs" id="journal-subtabs">
+      <button class="subtab-btn active" data-sub="culture" onclick="switchJournalTab('culture')">Culture</button>
+      <button class="subtab-btn" data-sub="behemoths" onclick="switchJournalTab('behemoths')">Behemoths</button>
+      <button class="subtab-btn" data-sub="challenges" onclick="switchJournalTab('challenges')">Challenges</button>
+      <button class="subtab-btn" data-sub="looming" onclick="switchJournalTab('looming')">Looming</button>
+      <button class="subtab-btn" data-sub="investigations" onclick="switchJournalTab('investigations')">Investigations</button>
+      <button class="subtab-btn" data-sub="notes" onclick="switchJournalTab('notes')">Notes</button>
     </div>
-    <div class="culture-lists" id="culture-lists"></div>
-  </div>
 
-  <!-- BEHEMOTHS -->
-  <div class="tab-panel" id="tab-behemoths">
-    <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('behemoth')">+ Add Behemoth</button></div>
-    <div class="journal-grid" id="behemoths-list"></div>
-  </div>
+    <!-- CULTURE -->
+    <div class="subtab-panel active" id="tab-culture">
+      <div class="form-group" style="max-width:420px">
+        <label>Tribe Name</label>
+        <input class="form-control" id="culture-tribe" placeholder="Name your tribe…" onchange="saveTribeName(this.value)">
+      </div>
+      <div class="culture-lists" id="culture-lists"></div>
+    </div>
 
-  <!-- CHALLENGE RECORD -->
-  <div class="tab-panel" id="tab-challenges">
-    <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('challenge')">+ Add Challenge</button></div>
-    <div id="challenges-list"></div>
-  </div>
+    <!-- BEHEMOTHS -->
+    <div class="subtab-panel" id="tab-behemoths">
+      <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('behemoth')">+ Add Behemoth</button></div>
+      <div class="journal-grid" id="behemoths-list"></div>
+    </div>
 
-  <!-- LOOMING CHALLENGES -->
-  <div class="tab-panel" id="tab-looming">
-    <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('looming')">+ Add Looming Challenge</button></div>
-    <div class="looming-list" id="looming-list"></div>
-  </div>
+    <!-- CHALLENGE RECORD -->
+    <div class="subtab-panel" id="tab-challenges">
+      <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('challenge')">+ Add Challenge</button></div>
+      <div id="challenges-list"></div>
+    </div>
 
-  <!-- INVESTIGATIONS -->
-  <div class="tab-panel" id="tab-investigations">
-    <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('investigation')">+ Add Investigation</button></div>
-    <div class="journal-grid" id="investigations-list"></div>
-  </div>
+    <!-- LOOMING CHALLENGES -->
+    <div class="subtab-panel" id="tab-looming">
+      <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('looming')">+ Add Looming Challenge</button></div>
+      <div class="looming-list" id="looming-list"></div>
+    </div>
 
-  <!-- NOTES -->
-  <div class="tab-panel" id="tab-notes">
-    <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('note')">+ Add Note Page</button></div>
-    <div class="journal-grid" id="notes-list"></div>
+    <!-- INVESTIGATIONS -->
+    <div class="subtab-panel" id="tab-investigations">
+      <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('investigation')">+ Add Investigation</button></div>
+      <div class="journal-grid" id="investigations-list"></div>
+    </div>
+
+    <!-- NOTES -->
+    <div class="subtab-panel" id="tab-notes">
+      <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('note')">+ Add Note Page</button></div>
+      <div class="journal-grid" id="notes-list"></div>
+    </div>
   </div>
 
   <!-- JOURNAL -->
   <div class="tab-panel" id="tab-journal">
     <div class="controls">
+      <button class="btn btn-primary" onclick="openModal()">+ Add Recipe</button>
       <input class="search-box" type="text" placeholder="Search by item name, code…" oninput="renderJournal()" id="search">
       <button class="btn" onclick="inferCombinations()" title="Find every material pair whose pips produce an already-recorded code, and attach them as inferred combinations">Infer Combinations</button>
       <button class="btn" onclick="clearJournalFilters()" id="clear-btn" style="display:none">Clear Search</button>
@@ -275,8 +287,8 @@
       <button class="btn" onclick="closeImportModal()">Cancel</button>
     </div>
     <div style="margin-top:.9rem;font-size:.78rem;color:var(--flint)">
-      <strong style="color:var(--chalk)">Merge</strong> — incoming recipes are added; when both sides have the same recipe, the most recently edited copy wins. Dead-end codes are combined.<br>
-      <strong style="color:var(--chalk)">Overwrite</strong> — replaces all current recipes and dead-end codes with the file contents.
+      <strong style="color:var(--chalk)">Merge</strong> — incoming entries are added; when both sides have the same entry, the most recently edited copy wins, and any conflicts above are resolved by your choices.<br>
+      <strong style="color:var(--chalk)">Overwrite</strong> — replaces all current data with the file contents (conflict choices are ignored).
     </div>
   </div>
 </div>
@@ -305,7 +317,7 @@
     <div class="help-section">
       <h3>Recording a discovery</h3>
       <p>Go to the <strong>Crafting</strong> tab and pick the two materials you used — combinations appear as soon as you choose (leave Material B on <strong>All materials</strong> to see every pairing). Find the code that matched and click <strong>Record discovery</strong> — the form opens pre-filled with the materials and code. Give the item a name and its card number, then save.</p>
-      <p>You can also add a recipe manually from any tab using <strong>+ Add Recipe</strong> in the header.</p>
+      <p>You can also add a recipe manually with <strong>+ Add Recipe</strong> on the Recipes tab (or press <strong>n</strong>).</p>
     </div>
 
     <div class="help-section">
@@ -343,8 +355,8 @@
     </div>
 
     <div class="help-section">
-      <h3>Journal tabs</h3>
-      <p><strong>Culture</strong> — tribe name, structures, mantle powers, knowledge cards, taboos, pigments. <strong>Behemoths</strong> — each with lair hex, demeanor, and revealed secrets. <strong>Challenges</strong> — record grouped by epoch, newest first. <strong>Looming</strong> — upcoming challenges in priority order (reorder with ▲▼). <strong>Investigations</strong> — omens and findings. <strong>Cave Wall</strong> — draw pictographic records with a finger, stylus, or Apple Pencil using the six pencils from the game box; drawings appear directly on the cave wall in the order they were painted, and sync with the group. To copy a mark, pick it from <strong>Copy a mark…</strong> in the editor — it pre-fills the name and lays a ghosted template on the canvas to trace over (the template itself is never saved). <strong>Notes</strong> — free-form named pages. Everything is saved locally, included in Export JSON, and merged through Drive Sync like recipes.</p>
+      <h3>Journal tab</h3>
+      <p>The <strong>Journal</strong> tab gathers the campaign record into sub-tabs. <strong>Culture</strong> — tribe name, structures, mantle powers, knowledge cards, taboos, pigments. <strong>Behemoths</strong> — each with lair hex, demeanor, and revealed secrets. <strong>Challenges</strong> — record grouped by epoch, newest first. <strong>Looming</strong> — upcoming challenges in priority order (reorder with ▲▼). <strong>Investigations</strong> — omens and findings. <strong>Cave Wall</strong> — draw pictographic records with a finger, stylus, or Apple Pencil using the six pencils from the game box; drawings appear directly on the cave wall in the order they were painted, and sync with the group. To copy a mark, pick it from <strong>Copy a mark…</strong> in the editor — it pre-fills the name and lays a ghosted template on the canvas to trace over (the template itself is never saved). <strong>Notes</strong> — free-form named pages. Everything is saved locally, included in Export JSON, and merged through Drive Sync like recipes.</p>
     </div>
 
     <div class="help-section">
@@ -459,6 +471,13 @@
       <button class="btn btn-primary" onclick="saveCustomMaterial()">Save</button>
     </div>
   </div>
+</div>
+
+<!-- UNDO TOAST -->
+<div class="undo-toast hidden" id="undo-toast">
+  <span id="undo-toast-msg"></span>
+  <button class="btn btn-sm" onclick="undoToastAction()">Undo</button>
+  <button class="undo-toast-close" onclick="hideUndoToast()" title="Dismiss">×</button>
 </div>
 
 <script src="app.js?v=STAMP"></script>
