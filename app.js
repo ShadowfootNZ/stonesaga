@@ -9,12 +9,6 @@
 //   - Store hex annotations in the save JSON under `valleyMap`.
 //   - Behemoth `lairHex` fields become cross-links to hex IDs once this exists.
 //
-// ── CAVE WALL (phase 4b) ───────────────────────────
-// TODO: Photo upload for the Cave Wall — attach a photo of a physical drawing
-//   to an entry. Downscale to ~800px client-side; store the blob in IndexedDB
-//   (local-only) with the name/metadata syncing as usual. Drawing canvas itself
-//   shipped 2026-07-03 (vector strokes in the save JSON).
-//
 // ── DRIVE SYNC TOKEN ENFORCEMENT ───────────────────
 // TODO (by ~2026-07-18): Flip ENFORCE_TOKEN to true in drive-sync.gs and
 //   redeploy the script. The flag shipped false on 2026-07-04 so the script
