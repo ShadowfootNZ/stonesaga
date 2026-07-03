@@ -18,6 +18,7 @@ VERSION=$(git rev-parse --short HEAD)
 STAGE=$(mktemp -d)
 sed "s/STAMP/$VERSION/g" index.html > "$STAGE/index.html"
 cp styles.css app.js analytics.js materials.json catalogue.json "$STAGE/"
+cp manifest.json apple-touch-icon.png favicon-64.png icon-192.png icon-512.png icon-maskable-512.png "$STAGE/"
 cp -r assets/ "$STAGE/assets/"
 
 # Set web-safe permissions — mktemp creates 700 dirs which Apache cannot read,
