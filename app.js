@@ -78,6 +78,7 @@ const ID_PREFIXES = {
   KN: 'Knowledge Card',
   CH: 'Challenge',
   IV: 'Investigation',
+  BT: 'Behemoth Secret',
 };
 const PIP_CSS     = {Blue:'blue',Red:'red',Yellow:'yellow',Purple:'purple',Grey:'grey',Green:'green',Orange:'orange',Silver:'silver'};
 
@@ -169,7 +170,7 @@ let appUpdate       = {state:'idle', latest:null, checkedAt:null, error:null, di
 // Journal sections — persistence is wired here; each section's UI arrives in its own phase.
 // Every list entry carries {id, updatedAt} so imports/Drive sync can merge (union by id, newer wins).
 let culture           = emptyCulture();
-let behemoths         = [];   // [{id,name,lairHex,demeanor:1..9,secrets:[text],notes,updatedAt}]
+let behemoths         = [];   // [{id,cardId,name,lairHex,lairOverlay,lairZone:A|B|C,demeanor:1..9,secrets:[{cardId,name,description}],notes,updatedAt}] — legacy secrets are plain strings
 let challengeRecord   = [];   // [{id,epoch,name,cardId,goalsCompleted,notes,updatedAt}] — flat list, grouped by epoch at render time
 let loomingChallenges = [];   // [{id,name,cardId,prepareByEpoch,notes,order,updatedAt}]
 let investigations    = [];   // [{id,omen,cardId,notes,updatedAt}]
@@ -2279,10 +2280,12 @@ const CODEX_SOURCES = {
 
 const JOURNAL_SECTIONS = {
   structure: {label:'Structure', get:()=>culture.structures, set:v=>culture.structures=v, render:()=>renderCulture(), fields:[
+    {key:'cardId', label:'Card ID', placeholder:'e.g. ST02', normalize:v=>normalizeCardId(v,'ST')},
     {key:'name',  label:'Name', required:true, placeholder:'e.g. Fire Pit'},
     {key:'notes', label:'Notes', type:'textarea'},
   ]},
   mantle: {label:'Mantle Power', get:()=>culture.mantlePowers, set:v=>culture.mantlePowers=v, render:()=>renderCulture(), fields:[
+    {key:'cardId', label:'Card ID', placeholder:'e.g. MA01', normalize:v=>normalizeCardId(v,'MA')},
     {key:'mantle', label:'Mantle', type:'datalist', options:()=>knownMantles(), placeholder:'e.g. Seeker', normalize:v=>mantleName(v)},
     {key:'name', label:'Name', required:true},
     {key:'description', label:'Description', type:'textarea'},
@@ -2298,6 +2301,7 @@ const JOURNAL_SECTIONS = {
     {key:'name', label:'Pigment', required:true, placeholder:'e.g. Red ochre'},
   ]},
   outpost: {label:'Outpost', get:()=>culture.outposts, set:v=>culture.outposts=v, render:()=>renderCulture(), fields:[
+    {key:'cardId', label:'Overlay tile ID', placeholder:'e.g. OP01', normalize:v=>normalizeCardId(v,'OP')},
     {key:'name', label:'Name', required:true, placeholder:'e.g. First Camp'},
     {key:'structures', label:'Structures built here', type:'checks',
       options:()=>live(culture.structures).map(s=>({value:s.id,label:s.name})),
@@ -2312,10 +2316,13 @@ const JOURNAL_SECTIONS = {
     {key:'notes', label:'Notes', type:'textarea', rows:3},
   ]},
   behemoth: {label:'Behemoth', get:()=>behemoths, set:v=>behemoths=v, render:()=>renderBehemoths(), fields:[
+    {key:'cardId', label:'Card ID', placeholder:'e.g. BH03', normalize:v=>normalizeCardId(v,'BH')},
     {key:'name', label:'Name', required:true},
-    {key:'lairHex', label:'Lair hex', placeholder:'e.g. VV02', normalize:v=>normalizeCardId(v)},
+    {key:'lairHex', label:'Lair hex', placeholder:'e.g. VV02', normalize:v=>normalizeCardId(v), group:'lair'},
+    {key:'lairOverlay', label:'Lair overlay tile', placeholder:'tile ID', normalize:v=>normalizeCardId(v), group:'lair'},
+    {key:'lairZone', label:'Overlay zone', type:'select', defaultValue:'', options:['','A','B','C'], group:'lair'},
     {key:'demeanor', label:'Demeanor', type:'number', required:true, min:BEHEMOTH_DEMEANOR_MIN, max:BEHEMOTH_DEMEANOR_MAX, defaultValue:BEHEMOTH_DEMEANOR_DEFAULT, placeholder:'1-9'},
-    {key:'secrets', label:'Revealed secrets (one per line, in reveal order)', type:'lines', rows:4},
+    {key:'secrets', label:'Revealed secrets (in reveal order)', type:'secrets'},
     {key:'notes', label:'Notes', type:'textarea'},
   ]},
   challenge: {label:'Challenge', get:()=>challengeRecord, set:v=>challengeRecord=v, render:()=>renderChallenges(), fields:[
@@ -2365,6 +2372,11 @@ function jeFieldHtml(f, val){
     const opts=typeof f.options==='function'?f.options():f.options;
     return `<div class="form-group">${label}<input class="form-control" id="${id}" list="${id}-list" placeholder="${esc(f.placeholder||'')}" value="${esc(val)}"><datalist id="${id}-list">${opts.map(o=>`<option value="${esc(o)}">`).join('')}</datalist></div>`;
   }
+  if(f.type==='secrets'){ // behemoth secrets: repeatable {cardId, name, description} rows
+    return `<div class="form-group">${label}
+      <div class="je-secrets" id="${id}-rows">${(val||[]).map(jeSecretRowHtml).join('')}</div>
+      <button type="button" class="btn btn-sm" onclick="jeAddSecretRow()">+ Add secret</button></div>`;
+  }
   const extraAttrs = f.type==='number'
     ? ` min="${f.min??''}" max="${f.max??''}" step="${f.step??1}"`
     : '';
@@ -2372,7 +2384,45 @@ function jeFieldHtml(f, val){
 }
 
 function jeFieldValue(f, v){
-  return f.type==='lines' ? (v||[]).join('\n') : f.type==='checks' ? (v||[]) : (v??'');
+  return f.type==='lines' ? (v||[]).join('\n') : (f.type==='checks'||f.type==='secrets') ? (v||[]) : (v??'');
+}
+
+// One secret = {cardId, name, description}; legacy secrets are plain strings
+// (pre-2026-07-05 saves and copies merged in from older devices) — treat the
+// string as the name everywhere.
+function secretObj(s){return typeof s==='string'?{name:s}:(s||{});}
+
+function jeSecretRowHtml(s){
+  const o=secretObj(s);
+  return `<div class="je-secret-row">
+    <input class="form-control je-secret-id" placeholder="BT01" value="${esc(o.cardId||'')}">
+    <input class="form-control je-secret-name" placeholder="Name" value="${esc(o.name||'')}">
+    <input class="form-control je-secret-desc" placeholder="Description" value="${esc(o.description||'')}">
+    <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove()" title="Remove secret">×</button>
+  </div>`;
+}
+function jeAddSecretRow(){
+  const rows=document.getElementById('je-f-secrets-rows');
+  if(rows) rows.insertAdjacentHTML('beforeend', jeSecretRowHtml());
+}
+
+// Render a spec's fields; consecutive fields sharing a `group` sit side by
+// side in one .form-row (e.g. the behemoth lair hex / overlay / zone trio).
+function jeFieldsHtml(spec, entry){
+  const html=[];
+  const fieldHtml=f=>{
+    const v=entry ? entry[f.key] : (f.defaultValue ?? undefined);
+    return jeFieldHtml(f, jeFieldValue(f, v));
+  };
+  for(let i=0;i<spec.fields.length;i++){
+    const f=spec.fields[i];
+    if(f.group){
+      const run=[fieldHtml(f)];
+      while(i+1<spec.fields.length && spec.fields[i+1].group===f.group) run.push(fieldHtml(spec.fields[++i]));
+      html.push(`<div class="form-row">${run.join('')}</div>`);
+    } else html.push(fieldHtml(f));
+  }
+  return html.join('');
 }
 
 // Read every field of the entry form back into `entry`, validating as we go.
@@ -2383,12 +2433,18 @@ function readJournalFields(spec, entry){
     let v;
     if(f.type==='checks'){
       v=[...document.querySelectorAll('#je-f-'+f.key+' input:checked')].map(i=>i.value);
+    }else if(f.type==='secrets'){
+      v=[...document.querySelectorAll('#je-f-'+f.key+'-rows .je-secret-row')].map(r=>({
+        cardId:normalizeCardId(r.querySelector('.je-secret-id').value,'BT'),
+        name:r.querySelector('.je-secret-name').value.trim(),
+        description:r.querySelector('.je-secret-desc').value.trim(),
+      })).filter(s=>s.cardId||s.name||s.description);
     }else{
       v=document.getElementById('je-f-'+f.key).value;
       if(f.type==='lines') v=v.split('\n').map(s=>s.trim()).filter(Boolean);
       else v=v.trim();
     }
-    if(f.required&&((f.type==='lines'||f.type==='checks')?!v.length:!v)){alert(`${f.label} is required.`);return null;}
+    if(f.required&&((f.type==='lines'||f.type==='checks'||f.type==='secrets')?!v.length:!v)){alert(`${f.label} is required.`);return null;}
     if(f.type==='number'&&v){
       const n=Number(v);
       if(!Number.isFinite(n)){alert(`${f.label} must be a number.`);return null;}
@@ -2410,10 +2466,7 @@ function openJournalEntry(section, id){
   if(id&&!entry) return;
   jeState={section, id:id||null};
   document.getElementById('je-title').textContent=(entry?'Edit ':'Add ')+spec.label;
-  document.getElementById('je-fields').innerHTML=spec.fields.map(f=>{
-    const v=entry ? entry[f.key] : (f.defaultValue ?? undefined);
-    return jeFieldHtml(f, jeFieldValue(f, v));
-  }).join('');
+  document.getElementById('je-fields').innerHTML=jeFieldsHtml(spec, entry);
   document.getElementById('je-overlay').classList.remove('hidden');
   document.getElementById('je-f-'+spec.fields[0].key)?.focus();
 }
@@ -2433,10 +2486,7 @@ function openChallengeEntry(sourceSection='challenge', id){
   const spec=JOURNAL_SECTIONS.challenge;
   jeState={section:'challenge', sourceSection, id:id||null};
   document.getElementById('je-title').textContent=(entry?'Edit ':'Add ')+spec.label;
-  document.getElementById('je-fields').innerHTML=spec.fields.map(f=>{
-    const v=entry ? entry[f.key] : (f.defaultValue ?? undefined);
-    return jeFieldHtml(f, jeFieldValue(f, v));
-  }).join('');
+  document.getElementById('je-fields').innerHTML=jeFieldsHtml(spec, entry);
   document.getElementById('je-overlay').classList.remove('hidden');
   document.getElementById('je-f-'+spec.fields[0].key)?.focus();
 }
@@ -2634,13 +2684,14 @@ function outpostStructureNames(e){
 function renderCulture(){
   document.getElementById('culture-tribe').value=culture.tribeName||'';
   // [section, title, entries, row formatter, optional custom list renderer]
+  const idChip=e=>e.cardId?`<span class="recipe-code" style="font-size:.75rem">${esc(e.cardId)}</span> `:'';
   const blocks=[
-    ['structure','Structures',live(culture.structures),e=>`<strong>${esc(e.name)}</strong>${e.notes?` — ${esc(e.notes)}`:''}`],
+    ['structure','Structures',live(culture.structures),e=>`${idChip(e)}<strong>${esc(e.name)}</strong>${e.notes?` — ${esc(e.notes)}`:''}`],
     ['outpost','Outposts',live(culture.outposts),e=>{
       const names=outpostStructureNames(e);
-      return `<strong>${esc(e.name)}</strong>${names.length?` — ${esc(names.join(', '))}`:' — <em>no structures yet</em>'}${e.notes?`<div class="culture-row-notes">${esc(e.notes)}</div>`:''}`;
+      return `${idChip(e)}<strong>${esc(e.name)}</strong>${names.length?` — ${esc(names.join(', '))}`:' — <em>no structures yet</em>'}${e.notes?`<div class="culture-row-notes">${esc(e.notes)}</div>`:''}`;
     }],
-    ['mantle','Mantle Powers',live(culture.mantlePowers),e=>`<strong>${esc(e.name)}</strong>${e.description?` — ${esc(e.description)}`:''}`,mantlePowersHtml],
+    ['mantle','Mantle Powers',live(culture.mantlePowers),e=>`${idChip(e)}<strong>${esc(e.name)}</strong>${e.description?` — ${esc(e.description)}`:''}`,mantlePowersHtml],
     ['knowledge','Knowledge Cards',live(culture.knowledgeCards),e=>`${e.cardId?`<span class="recipe-code" style="font-size:.75rem">${esc(e.cardId)}</span> `:''}<strong>${esc(e.name)}</strong>`],
     ['taboo','Taboos',live(culture.taboos),e=>esc(e.text)],
     ['pigment','Pigments',live(culture.pigments),e=>esc(e.name)],
@@ -2663,7 +2714,7 @@ function renderBehemoths(){
   const list=live(behemoths);
   el.innerHTML=(list.length?list.map(e=>`
     <div class="journal-card">
-      <div class="journal-card-title">${esc(e.name)}</div>
+      <div class="journal-card-title">${e.cardId?`<span class="recipe-code" style="font-size:.75rem">${esc(e.cardId)}</span> `:''}${esc(e.name)}</div>
       ${clampBehemothDemeanor(e.demeanor)!=null?`
         <div class="behemoth-demeanor-row">
           ${behemothDemeanorTrackHtml(e.demeanor)}
@@ -2672,8 +2723,13 @@ function renderBehemoths(){
             <button class="btn btn-sm" onclick="adjustBehemothDemeanor('${e.id}',1)" title="Aggravate">+</button>
           </div>
         </div>`:''}
-      ${e.lairHex?`<div class="journal-card-sub">Lair hex: ${esc(e.lairHex)}</div>`:''}
-      ${(e.secrets||[]).length?`<div class="journal-card-sub">Revealed secrets</div><ol class="secret-list">${e.secrets.map(s=>`<li>${esc(s)}</li>`).join('')}</ol>`:''}
+      ${(e.lairHex||e.lairOverlay||e.lairZone)?`<div class="journal-card-sub">Lair: ${esc([
+        e.lairHex, e.lairOverlay?`overlay ${e.lairOverlay}`:'', e.lairZone?`zone ${e.lairZone}`:'',
+      ].filter(Boolean).join(' · '))}</div>`:''}
+      ${(e.secrets||[]).length?`<div class="journal-card-sub">Revealed secrets</div><ol class="secret-list">${e.secrets.map(s=>{
+        const o=secretObj(s);
+        return `<li>${o.cardId?`<span class="recipe-code" style="font-size:.7rem">${esc(o.cardId)}</span> `:''}<strong>${esc(o.name||'')}</strong>${o.description?` — ${esc(o.description)}`:''}</li>`;
+      }).join('')}</ol>`:''}
       ${e.notes?`<div class="journal-card-body">${esc(e.notes)}</div>`:''}
       ${journalCardActions('behemoth',e.id)}
     </div>`).join('')

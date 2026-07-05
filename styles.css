@@ -240,6 +240,9 @@ main{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:2rem 1.5
 .culture-row-notes{font-size:.8rem;color:var(--flint);margin-top:.15rem;}
 .je-checks{display:flex;flex-direction:column;gap:.3rem;max-height:220px;overflow-y:auto;border:1px solid var(--smoke);background:#fff;padding:.5rem .7rem;}
 .je-check{display:flex;align-items:center;gap:.5rem;font-size:.92rem;cursor:pointer;}
+.je-secrets{display:flex;flex-direction:column;gap:.4rem;margin-bottom:.4rem;}
+.je-secret-row{display:grid;grid-template-columns:86px 1fr 1.3fr auto;gap:.4rem;align-items:center;}
+@media(max-width:600px){.je-secret-row{grid-template-columns:86px 1fr auto;}.je-secret-row .je-secret-desc{grid-column:1/-1;}}
 .challenge-section{margin-bottom:1.4rem;}
 .challenge-section-title{font-family:'Cinzel',serif;font-size:.9rem;color:var(--ochre);margin-bottom:.7rem;letter-spacing:.05em;text-transform:uppercase;}
 .challenge-card{border-left-width:4px;}
