@@ -84,8 +84,42 @@ main{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:2rem 1.5
 .mat-autocomplete{position:absolute;top:calc(100% + 2px);left:0;right:0;background:#fff;border:1px solid var(--ochre);z-index:150;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(44,29,28,.12);}
 .mat-autocomplete.hidden{display:none;}
 .mat-autocomplete-item{padding:.3rem .8rem;font-size:.9rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;}
+.mat-ac-img-wrap{display:inline-flex;position:relative;flex-shrink:0;}
 .mat-ac-img{width:28px;height:28px;object-fit:cover;border-radius:3px;flex-shrink:0;}
 .mat-ac-img-placeholder{background:rgba(0,0,0,.06);border:1px dashed var(--smoke);}
+.mark-token{position:relative;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,.55);border:1px solid var(--smoke);border-radius:4px;color:var(--chalk);overflow:hidden;}
+.mark-token-sm{width:28px;height:28px;border-radius:3px;}
+.mark-token-md{width:52px;height:52px;}
+.mark-token-lg{width:110px;height:110px;border-radius:4px;}
+.mark-token-edge{position:absolute;display:flex;align-items:center;gap:1px;font-family:'Cinzel',serif;font-weight:600;line-height:1;color:var(--chalk);text-shadow:0 1px 0 rgba(255,255,255,.45);}
+.mark-token-edge .pip-icon{flex-shrink:0;}
+.null-pip-icon{position:relative;display:inline-block;width:11px;height:11px;flex-shrink:0;}
+.null-pip-icon::before{content:'';position:absolute;inset:1px;border:1.6px solid var(--chalk);border-radius:50%;}
+.null-pip-icon::after{content:'';position:absolute;left:50%;top:0;bottom:0;width:1.6px;background:var(--chalk);transform:translateX(-50%) rotate(-35deg);}
+.mark-token-count{font-size:.56rem;}
+.mark-token-edge.left{left:2px;top:50%;transform:translateY(-50%);flex-direction:column;}
+.mark-token-edge.right{right:2px;top:50%;transform:translateY(-50%);flex-direction:column;}
+.mark-token-edge.top{top:2px;left:50%;transform:translateX(-50%);}
+.mark-token-edge.bottom{bottom:2px;left:50%;transform:translateX(-50%);}
+.mark-token-sm .mark-token-edge .pip-icon{width:8px;height:8px;}
+.mark-token-sm .null-pip-icon{width:8px;height:8px;}
+.mark-token-sm .null-pip-icon::before{inset:1px;border-width:1.2px;}
+.mark-token-sm .null-pip-icon::after{width:1.2px;}
+.mark-token-sm .mark-token-count{display:none;}
+.mark-token-sm .mark-token-edge.left{left:1px;}
+.mark-token-sm .mark-token-edge.right{right:1px;}
+.mark-token-sm .mark-token-edge.top{top:1px;}
+.mark-token-sm .mark-token-edge.bottom{bottom:1px;}
+.mark-token-md .mark-token-count{font-size:.58rem;}
+.mark-token-lg .mark-token-edge{gap:3px;}
+.mark-token-lg .null-pip-icon{width:18px;height:18px;}
+.mark-token-lg .null-pip-icon::before{inset:2px;border-width:2px;}
+.mark-token-lg .null-pip-icon::after{width:2px;}
+.mark-token-lg .mark-token-edge.left{left:6px;}
+.mark-token-lg .mark-token-edge.right{right:6px;}
+.mark-token-lg .mark-token-edge.top{top:6px;}
+.mark-token-lg .mark-token-edge.bottom{bottom:6px;}
+.mark-token-lg .mark-token-count{font-size:.9rem;}
 .mat-autocomplete-item:hover,.mat-autocomplete-item.active{background:var(--ash);}
 .mat-cat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .mat-cat-dot.animal{background:var(--cat-animal);}
@@ -160,7 +194,9 @@ main{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:2rem 1.5
 
 /* Token images in combo cards */
 .combo-token-pair{display:flex;align-items:center;gap:2px;margin-bottom:.55rem;}
+.combo-token-img-wrap{display:inline-flex;flex-shrink:0;}
 .combo-token-img{width:110px;height:110px;object-fit:cover;border-radius:4px;border:1px solid var(--smoke);flex-shrink:0;}
+.combo-token-placeholder{background:rgba(0,0,0,.05);border:1px dashed var(--smoke);}
 
 .combo-card{background:var(--ash);border:1px solid var(--smoke);padding:.85rem 1rem;display:flex;flex-direction:column;gap:.45rem;box-shadow:0 1px 3px rgba(44,29,28,.06);}
 .combo-card.state-discovered{background:var(--discovered-bg);border-color:var(--discovered-border);border-width:2px;}
@@ -185,19 +221,34 @@ main{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:2rem 1.5
 .journal-card-body{font-size:.85rem;white-space:pre-wrap;color:var(--chalk);}
 .journal-actions{display:flex;gap:.4rem;margin-top:auto;padding-top:.4rem;}
 .journal-empty{color:var(--flint);font-style:italic;}
+.behemoth-demeanor-row{display:flex;align-items:center;gap:.75rem;justify-content:space-between;}
+.behemoth-demeanor{flex:1;min-width:0;}
+.behemoth-demeanor-number{font-size:.76rem;letter-spacing:.08em;text-transform:uppercase;color:var(--flint);margin-bottom:.28rem;}
+.behemoth-demeanor-track{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:.22rem;}
+.behemoth-demeanor-segment{height:.7rem;border:1px solid var(--smoke);background:rgba(201,168,130,.16);}
+.behemoth-demeanor-segment.is-filled{box-shadow:inset 0 -1px 0 rgba(255,255,255,.2);}
+.behemoth-demeanor-actions{display:flex;gap:.35rem;flex-shrink:0;}
+.behemoth-demeanor-actions .btn{min-width:2rem;padding:.25rem .45rem;}
 .secret-list{margin:.1rem 0 .1rem 1.3rem;font-size:.85rem;color:var(--chalk);}
 .culture-lists{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem;margin-top:1rem;}
 .culture-block{background:var(--ash);border:1px solid var(--smoke);padding:1rem;box-shadow:0 1px 3px rgba(44,29,28,.06);}
 .culture-block h3{font-family:'Cinzel',serif;font-size:.9rem;color:var(--ochre);margin-bottom:.6rem;display:flex;justify-content:space-between;align-items:center;gap:.6rem;}
 .culture-row{display:flex;align-items:baseline;gap:.6rem;padding:.35rem 0;border-bottom:1px dashed var(--smoke);font-size:.88rem;}
 .culture-row:last-child{border-bottom:none;}
+.challenge-section{margin-bottom:1.4rem;}
+.challenge-section-title{font-family:'Cinzel',serif;font-size:.9rem;color:var(--ochre);margin-bottom:.7rem;letter-spacing:.05em;text-transform:uppercase;}
+.challenge-card{border-left-width:4px;}
+.challenge-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.6rem;}
+.challenge-status-chip{font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;padding:.12rem .45rem;border:1px solid;flex-shrink:0;}
+.challenge-card.status-current{background:rgba(214,232,214,.72);border-color:var(--discovered-border);}
+.challenge-status-chip.status-current{border-color:var(--discovered-border);color:var(--discovered-text);}
+.journal-card.status-looming{background:rgba(236,225,197,.7);border-color:#b08c56;}
+.challenge-status-chip.status-looming{border-color:#b08c56;color:#8a6040;}
+.challenge-card.status-resolved{background:rgba(231,229,225,.82);border-color:#9b968b;}
+.challenge-status-chip.status-resolved{border-color:#9b968b;color:#6b655b;}
 .epoch-group{margin-bottom:1rem;border:1px solid var(--smoke);background:var(--ash);}
 .epoch-group summary{cursor:pointer;padding:.6rem 1rem;font-family:'Cinzel',serif;font-weight:600;color:var(--ochre);}
 .epoch-group .journal-grid{padding:.8rem 1rem 1rem;}
-.outcome-badge{font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;padding:.1rem .4rem;border:1px solid;}
-.outcome-badge.won{border-color:var(--discovered-border);color:var(--discovered-text);}
-.outcome-badge.lost{border-color:var(--nothing-border);color:var(--nothing-text);}
-.outcome-badge.fled{border-color:var(--smoke);color:var(--flint);}
 .looming-list{display:flex;flex-direction:column;gap:.8rem;max-width:760px;}
 
 /* Cave Wall — the gallery sits on the torch-lit stone; drawings are transparent
@@ -312,6 +363,7 @@ body.cave-editor-open{overflow:hidden;}
 .material-card{background:rgba(255,255,255,.72);border:1px solid var(--smoke);padding:.75rem;display:flex;gap:.65rem;}
 .material-card-custom{border-color:var(--ochre);background:rgba(42,157,143,.12),rgba(255,255,255,.72);}
 .material-card-img-wrap{flex-shrink:0;}
+.material-card-img-frame{display:inline-flex;}
 .material-card-img{width:52px;height:52px;object-fit:contain;}
 .material-card-img-placeholder{width:52px;height:52px;background:rgba(0,0,0,.05);border:1px dashed var(--smoke);}
 .material-card-body{flex:1;min-width:0;}
@@ -397,4 +449,5 @@ body.cave-editor-open{overflow:hidden;}
 
   .modal-actions{flex-wrap:wrap;}
   .modal-actions .btn{flex:1;}
+  .behemoth-demeanor-row{align-items:flex-start;}
 }

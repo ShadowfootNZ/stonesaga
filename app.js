@@ -8,6 +8,8 @@
 //   - Support uploading a scanned map image as a background layer.
 //   - Store hex annotations in the save JSON under `valleyMap`.
 //   - Behemoth `lairHex` fields become cross-links to hex IDs once this exists.
+//   - Replace free-text `lairHex` entry with grouped region-aware hex selection:
+//     VV/SP default regions, fixed region counts, and special HX01a/HX01b entries.
 //
 // ── DRIVE SYNC TOKEN ENFORCEMENT ───────────────────
 // TODO (by ~2026-07-18): Flip ENFORCE_TOKEN to true in drive-sync.gs and
@@ -151,8 +153,8 @@ let appUpdate       = {state:'idle', latest:null, checkedAt:null, error:null, di
 // Journal sections — persistence is wired here; each section's UI arrives in its own phase.
 // Every list entry carries {id, updatedAt} so imports/Drive sync can merge (union by id, newer wins).
 let culture           = emptyCulture();
-let behemoths         = [];   // [{id,name,lairHex,demeanor,secrets:[text],notes,updatedAt}]
-let challengeRecord   = [];   // [{id,epoch,name,cardId,outcome,notes,updatedAt}] — flat list, grouped by epoch at render time
+let behemoths         = [];   // [{id,name,lairHex,demeanor:1..9,secrets:[text],notes,updatedAt}]
+let challengeRecord   = [];   // [{id,epoch,name,cardId,goalsCompleted,notes,updatedAt}] — flat list, grouped by epoch at render time
 let loomingChallenges = [];   // [{id,name,cardId,prepareByEpoch,notes,order,updatedAt}]
 let investigations    = [];   // [{id,omen,cardId,notes,updatedAt}]
 let notePages         = [];   // [{id,title,body,updatedAt}]
@@ -495,7 +497,11 @@ function switchWorkshopTab(id){
 // Culture / Behemoths / Challenges / Looming / Investigations / Notes live as
 // sub-tabs under the Journal parent tab to keep the top-level tab row phone-sized.
 let journalSubtab='culture';
-const JOURNAL_TAB_RENDER={culture:renderCulture,behemoths:renderBehemoths,challenges:renderChallenges,looming:renderLooming,investigations:renderInvestigations,notes:renderNotes};
+const JOURNAL_TAB_RENDER={culture:renderCulture,behemoths:renderBehemoths,challenges:renderChallenges,looming:renderChallenges,investigations:renderInvestigations,notes:renderNotes};
+const BEHEMOTH_DEMEANOR_MIN = 1;
+const BEHEMOTH_DEMEANOR_DEFAULT = 4;
+const BEHEMOTH_DEMEANOR_MAX = 9;
+const BEHEMOTH_DEMEANOR_COLORS = ['#547f46','#689240','#7aa53d','#afab3d','#cab344','#d9a042','#d8843e','#cf653d','#c04a4a'];
 
 function switchJournalTab(id){
   journalSubtab=id;
@@ -1288,16 +1294,48 @@ function clearJournalFilters(){
 // ═══════════════════════════════════════════════════
 let acIdxMap={};
 
+function materialMarksPlaceholderHtml(m, size='md', hidden=false){
+  const rawMarks = m?.marks || [];
+  const marks=rawMarks.map(mark => mark ? parseMark(mark) : { color:null, count:0, isNull:true });
+  const hasAny=rawMarks.some(mark => mark !== undefined);
+  const hiddenAttr = hidden ? ' style="display:none"' : '';
+  if(!hasAny){
+    const baseClass = size==='lg' ? 'combo-token-img combo-token-placeholder'
+      : size==='sm' ? 'mat-ac-img mat-ac-img-placeholder'
+      : 'material-card-img-placeholder';
+    return `<span class="${baseClass}"${hiddenAttr}></span>`;
+  }
+  const edgeClasses=['left','right','top','bottom'];
+  const hasReal = i => !!marks[i] && !marks[i].isNull;
+  const showNull = [
+    hasReal(1) && !hasReal(0),
+    hasReal(0) && !hasReal(1),
+    hasReal(3) && !hasReal(2),
+    hasReal(2) && !hasReal(3),
+  ];
+  return `<span class="mark-token mark-token-${size}" title="${esc(m?.name||'Material')}"${hiddenAttr}>${marks.map((mark,i)=>{
+    if(!mark) return '';
+    if(mark.isNull && !showNull[i]) return '';
+    const pip = mark.isNull
+      ? '<span class="null-pip-icon" aria-hidden="true"></span>'
+      : pipHtml(mark.color);
+    return `<span class="mark-token-edge ${edgeClasses[i]}">
+      ${pip}
+      <span class="mark-token-count">${esc(mark.count)}</span>
+    </span>`;
+  }).join('')}</span>`;
+}
+
 function matImgHtml(name){
   const m=KM[norm(name)];
-  if(!m||!m.image) return '<span class="mat-ac-img mat-ac-img-placeholder"></span>';
-  return `<img src="${esc(m.image)}" alt="" class="mat-ac-img" onerror="this.classList.add('mat-ac-img-placeholder')">`;
+  if(!m||!m.image) return materialMarksPlaceholderHtml(m,'sm');
+  return `<span class="mat-ac-img-wrap"><img src="${esc(m.image)}" alt="" class="mat-ac-img" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'">${materialMarksPlaceholderHtml(m,'sm',true)}</span>`;
 }
 
 function comboTokenImg(name, deg=0){
   const m=KM[norm(name)];
-  if(!m||!m.image) return '';
-  return `<img src="${esc(m.image)}" alt="${esc(name)}" class="combo-token-img" style="transform:rotate(${deg}deg)" title="${esc(name)} (${deg}°)" onerror="this.style.display='none'">`;
+  if(!m||!m.image) return `<span class="combo-token-img-wrap" style="transform:rotate(${deg}deg)" title="${esc(name)} (${deg}°)">${materialMarksPlaceholderHtml(m,'lg')}</span>`;
+  return `<span class="combo-token-img-wrap" style="transform:rotate(${deg}deg)" title="${esc(name)} (${deg}°)"><img src="${esc(m.image)}" alt="${esc(name)}" class="combo-token-img" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'">${materialMarksPlaceholderHtml(m,'lg',true)}</span>`;
 }
 
 function tokenPairHtml(a, rotA, b, rotB){
@@ -1997,8 +2035,8 @@ function renderMaterials() {
     return `<div class="material-card${isCustom ? ' material-card-custom' : ''}">
       <div class="material-card-img-wrap">
         ${m.image
-          ? `<img src="${esc(m.image)}" alt="" class="material-card-img" onerror="this.style.display='none'">`
-          : `<div class="material-card-img-placeholder"></div>`}
+          ? `<span class="material-card-img-frame"><img src="${esc(m.image)}" alt="" class="material-card-img" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'">${materialMarksPlaceholderHtml(m,'md',true)}</span>`
+          : materialMarksPlaceholderHtml(m,'md')}
       </div>
       <div class="material-card-body">
         <div class="material-card-name-row">
@@ -2167,19 +2205,21 @@ const JOURNAL_SECTIONS = {
   ]},
   behemoth: {label:'Behemoth', get:()=>behemoths, set:v=>behemoths=v, render:()=>renderBehemoths(), fields:[
     {key:'name', label:'Name', required:true},
-    {key:'lairHex', label:'Lair hex', placeholder:'e.g. H7'},
-    {key:'demeanor', label:'Demeanor', placeholder:'e.g. Aggressive, Dormant'},
+    {key:'lairHex', label:'Lair hex', placeholder:'e.g. VV02'},
+    {key:'demeanor', label:'Demeanor', type:'number', required:true, min:BEHEMOTH_DEMEANOR_MIN, max:BEHEMOTH_DEMEANOR_MAX, defaultValue:BEHEMOTH_DEMEANOR_DEFAULT, placeholder:'1-9'},
     {key:'secrets', label:'Revealed secrets (one per line, in reveal order)', type:'lines', rows:4},
     {key:'notes', label:'Notes', type:'textarea'},
   ]},
   challenge: {label:'Challenge', get:()=>challengeRecord, set:v=>challengeRecord=v, render:()=>renderChallenges(), fields:[
-    {key:'epoch', label:'Epoch', type:'number', required:true, placeholder:'e.g. 2'},
+    {key:'status', label:'Status', type:'select', defaultValue:'current', options:['current','looming','resolved']},
+    {key:'epoch', label:'Epoch', type:'number', placeholder:'e.g. 2'},
+    {key:'prepareBy', label:'Prepare by (epoch)', placeholder:'e.g. 3'},
     {key:'name', label:'Name', required:true},
     {key:'cardId', label:'Card ID', placeholder:'e.g. CH08'},
-    {key:'outcome', label:'Outcome', type:'select', options:['','Won','Lost','Fled']},
+    {key:'goalsCompleted', label:'Goals completed', type:'textarea', rows:3},
     {key:'notes', label:'Notes', type:'textarea'},
   ]},
-  looming: {label:'Looming Challenge', get:()=>loomingChallenges, set:v=>loomingChallenges=v, render:()=>renderLooming(),
+  looming: {label:'Looming Challenge', get:()=>loomingChallenges, set:v=>loomingChallenges=v, render:()=>renderChallenges(),
     onNew:e=>{e.order=loomingChallenges.reduce((m,x)=>Math.max(m,x.order??-1),-1)+1;}, fields:[
     {key:'name', label:'Name', required:true},
     {key:'cardId', label:'Card ID'},
@@ -2197,7 +2237,7 @@ const JOURNAL_SECTIONS = {
   ]},
 };
 
-let jeState = null; // {section, id} while the entry modal is open
+let jeState = null; // {section, id, sourceSection} while the entry modal is open
 
 function jeFieldHtml(f, val){
   const id='je-f-'+f.key;
@@ -2206,17 +2246,44 @@ function jeFieldHtml(f, val){
     return `<div class="form-group">${label}<textarea class="form-control" id="${id}" rows="${f.rows||3}" placeholder="${esc(f.placeholder||'')}">${esc(val)}</textarea></div>`;
   if(f.type==='select')
     return `<div class="form-group">${label}<select class="form-control" id="${id}">${f.options.map(o=>`<option value="${esc(o)}"${o===val?' selected':''}>${esc(o)||'—'}</option>`).join('')}</select></div>`;
-  return `<div class="form-group">${label}<input class="form-control" id="${id}" type="${f.type==='number'?'number':'text'}" placeholder="${esc(f.placeholder||'')}" value="${esc(val)}"></div>`;
+  const extraAttrs = f.type==='number'
+    ? ` min="${f.min??''}" max="${f.max??''}" step="${f.step??1}"`
+    : '';
+  return `<div class="form-group">${label}<input class="form-control" id="${id}" type="${f.type==='number'?'number':'text'}"${extraAttrs} placeholder="${esc(f.placeholder||'')}" value="${esc(val)}"></div>`;
 }
 
 function openJournalEntry(section, id){
+  if(section==='challenge' || section==='looming') return openChallengeEntry(section, id);
   const spec=JOURNAL_SECTIONS[section];
   const entry=id?spec.get().find(e=>e.id===id):null;
   if(id&&!entry) return;
   jeState={section, id:id||null};
   document.getElementById('je-title').textContent=(entry?'Edit ':'Add ')+spec.label;
   document.getElementById('je-fields').innerHTML=spec.fields.map(f=>{
-    const v=entry?entry[f.key]:undefined;
+    const v=entry ? entry[f.key] : (f.defaultValue ?? undefined);
+    return jeFieldHtml(f, f.type==='lines'?(v||[]).join('\n'):(v??''));
+  }).join('');
+  document.getElementById('je-overlay').classList.remove('hidden');
+  document.getElementById('je-f-'+spec.fields[0].key).focus();
+}
+
+function openChallengeEntry(sourceSection='challenge', id){
+  const isLooming = sourceSection==='looming';
+  const sourceList = isLooming ? loomingChallenges : challengeRecord;
+  const raw = id ? sourceList.find(e=>e.id===id) : null;
+  if(id && !raw) return;
+  const entry = raw ? {
+    ...raw,
+    status: isLooming ? 'looming' : (raw.status || 'current'),
+    prepareBy: isLooming ? (raw.prepareBy || '') : (raw.prepareBy || ''),
+    epoch: isLooming ? '' : (raw.epoch ?? ''),
+    goalsCompleted: raw.goalsCompleted || '',
+  } : null;
+  const spec=JOURNAL_SECTIONS.challenge;
+  jeState={section:'challenge', sourceSection, id:id||null};
+  document.getElementById('je-title').textContent=(entry?'Edit ':'Add ')+spec.label;
+  document.getElementById('je-fields').innerHTML=spec.fields.map(f=>{
+    const v=entry ? entry[f.key] : (f.defaultValue ?? undefined);
     return jeFieldHtml(f, f.type==='lines'?(v||[]).join('\n'):(v??''));
   }).join('');
   document.getElementById('je-overlay').classList.remove('hidden');
@@ -2227,6 +2294,7 @@ function closeJournalEntry(){document.getElementById('je-overlay').classList.add
 
 function saveJournalEntry(){
   if(!jeState) return;
+  if(jeState.section==='challenge') return saveChallengeEntry();
   const spec=JOURNAL_SECTIONS[jeState.section];
   const entry={id:jeState.id||genId(), updatedAt:Date.now()};
   for(const f of spec.fields){
@@ -2234,6 +2302,14 @@ function saveJournalEntry(){
     if(f.type==='lines') v=v.split('\n').map(s=>s.trim()).filter(Boolean);
     else v=v.trim();
     if(f.required&&(f.type==='lines'?!v.length:!v)){alert(`${f.label} is required.`);return;}
+    if(f.type==='number'&&v){
+      const n=Number(v);
+      if(!Number.isFinite(n)){alert(`${f.label} must be a number.`);return;}
+      const min=f.min??n;
+      const max=f.max??n;
+      if(n<min||n>max){alert(`${f.label} must be between ${min} and ${max}.`);return;}
+      v=Math.round(n);
+    }
     entry[f.key]=v;
   }
   if(!jeState.id&&spec.onNew) spec.onNew(entry);
@@ -2242,6 +2318,67 @@ function saveJournalEntry(){
   if(i!==-1) list[i]={...list[i],...entry}; // keep fields not on the form (e.g. looming order)
   else list.push(entry);
   save(); closeJournalEntry(); spec.render();
+}
+
+function saveChallengeEntry(){
+  const spec=JOURNAL_SECTIONS.challenge;
+  const entry={id:jeState.id||genId(), updatedAt:Date.now()};
+  for(const f of spec.fields){
+    let v=document.getElementById('je-f-'+f.key).value;
+    if(f.type==='lines') v=v.split('\n').map(s=>s.trim()).filter(Boolean);
+    else v=v.trim();
+    if(f.required&&(f.type==='lines'?!v.length:!v)){alert(`${f.label} is required.`);return;}
+    if(f.type==='number'&&v){
+      const n=Number(v);
+      if(!Number.isFinite(n)){alert(`${f.label} must be a number.`);return;}
+      const min=f.min??n;
+      const max=f.max??n;
+      if(n<min||n>max){alert(`${f.label} must be between ${min} and ${max}.`);return;}
+      v=Math.round(n);
+    }
+    entry[f.key]=v;
+  }
+  if(entry.status!=='looming' && !entry.epoch){alert('Epoch is required for current and resolved challenges.');return;}
+  const sourceSection=jeState.sourceSection||'challenge';
+  if(sourceSection==='looming'){
+    const old=loomingChallenges.find(e=>e.id===entry.id);
+    if(old && entry.status!=='looming'){ old.deleted=true; old.updatedAt=Date.now(); }
+  } else {
+    const old=challengeRecord.find(e=>e.id===entry.id);
+    if(old && entry.status==='looming'){ old.deleted=true; old.updatedAt=Date.now(); }
+  }
+  if(entry.status==='looming'){
+    const loomingEntry={
+      id: entry.id,
+      name: entry.name,
+      cardId: entry.cardId||'',
+      prepareBy: entry.prepareBy||'',
+      notes: entry.notes||'',
+      order: (() => {
+        const existing=loomingChallenges.find(e=>e.id===entry.id);
+        return existing?.order ?? loomingChallenges.reduce((m,x)=>Math.max(m,x.order??-1),-1)+1;
+      })(),
+      updatedAt: entry.updatedAt,
+    };
+    const i=loomingChallenges.findIndex(e=>e.id===entry.id);
+    if(i!==-1) loomingChallenges[i]={...loomingChallenges[i],...loomingEntry, deleted:false};
+    else loomingChallenges.push(loomingEntry);
+  } else {
+    const challengeEntry={
+      id: entry.id,
+      status: entry.status||'current',
+      epoch: entry.epoch,
+      name: entry.name,
+      cardId: entry.cardId||'',
+      goalsCompleted: entry.goalsCompleted||'',
+      notes: entry.notes||'',
+      updatedAt: entry.updatedAt,
+    };
+    const i=challengeRecord.findIndex(e=>e.id===entry.id);
+    if(i!==-1) challengeRecord[i]={...challengeRecord[i],...challengeEntry, deleted:false};
+    else challengeRecord.push(challengeEntry);
+  }
+  save(); closeJournalEntry(); renderChallenges();
 }
 
 function jeLabelOf(e){return e.name||e.title||e.omen||e.text||'entry';}
@@ -2273,6 +2410,68 @@ function journalCardActions(section, id){
     <button class="btn btn-sm" onclick="openJournalEntry('${section}','${id}')">Edit</button>
     <button class="btn btn-sm btn-danger" onclick="deleteJournalEntry('${section}','${id}')">Delete</button>
   </div>`;
+}
+
+function challengeStatus(c){
+  return c.status==='resolved' ? 'resolved' : 'current';
+}
+
+function setChallengeStatus(id, status){
+  const c=challengeRecord.find(x=>x.id===id&&!x.deleted);
+  if(!c) return;
+  c.status=status;
+  c.updatedAt=Date.now();
+  save();
+  renderChallenges();
+}
+
+function promoteLoomingToCurrent(id){
+  const looming=loomingChallenges.find(x=>x.id===id&&!x.deleted);
+  if(!looming) return;
+  challengeRecord.push({
+    id: genId(),
+    status:'current',
+    epoch:'',
+    name: looming.name,
+    cardId: looming.cardId||'',
+    goalsCompleted:'',
+    notes: looming.notes||'',
+    updatedAt: Date.now(),
+  });
+  looming.deleted=true;
+  looming.updatedAt=Date.now();
+  save();
+  renderChallenges();
+}
+
+function clampBehemothDemeanor(v){
+  const n=Number(v);
+  if(!Number.isFinite(n)) return null;
+  return Math.min(BEHEMOTH_DEMEANOR_MAX, Math.max(BEHEMOTH_DEMEANOR_MIN, Math.round(n)));
+}
+
+function behemothDemeanorTrackHtml(value){
+  const demeanor=clampBehemothDemeanor(value);
+  if(demeanor==null) return '';
+  return `<div class="behemoth-demeanor">
+    <div class="behemoth-demeanor-number">Demeanor ${demeanor}</div>
+    <div class="behemoth-demeanor-track" aria-hidden="true">${Array.from({length:BEHEMOTH_DEMEANOR_MAX},(_,i)=>{
+      const filled=i<demeanor;
+      const color=BEHEMOTH_DEMEANOR_COLORS[i];
+      const style=filled?` style="background:${color};border-color:${color}"`:'';
+      return `<span class="behemoth-demeanor-segment${filled?' is-filled':''}"${style}></span>`;
+    }).join('')}</div>
+  </div>`;
+}
+
+function adjustBehemothDemeanor(id, delta){
+  const e=behemoths.find(x=>x.id===id&&!x.deleted);
+  if(!e) return;
+  const current=clampBehemothDemeanor(e.demeanor) ?? BEHEMOTH_DEMEANOR_MIN;
+  e.demeanor=Math.min(BEHEMOTH_DEMEANOR_MAX, Math.max(BEHEMOTH_DEMEANOR_MIN, current+delta));
+  e.updatedAt=Date.now();
+  save();
+  renderBehemoths();
 }
 
 // ── Culture ──
@@ -2315,7 +2514,14 @@ function renderBehemoths(){
   el.innerHTML=(list.length?list.map(e=>`
     <div class="journal-card">
       <div class="journal-card-title">${esc(e.name)}</div>
-      ${e.demeanor?`<div class="journal-card-sub">Demeanor: ${esc(e.demeanor)}</div>`:''}
+      ${clampBehemothDemeanor(e.demeanor)!=null?`
+        <div class="behemoth-demeanor-row">
+          ${behemothDemeanorTrackHtml(e.demeanor)}
+          <div class="behemoth-demeanor-actions">
+            <button class="btn btn-sm" onclick="adjustBehemothDemeanor('${e.id}',-1)" title="Placate">-</button>
+            <button class="btn btn-sm" onclick="adjustBehemothDemeanor('${e.id}',1)" title="Aggravate">+</button>
+          </div>
+        </div>`:''}
       ${e.lairHex?`<div class="journal-card-sub">Lair hex: ${esc(e.lairHex)}</div>`:''}
       ${(e.secrets||[]).length?`<div class="journal-card-sub">Revealed secrets</div><ol class="secret-list">${e.secrets.map(s=>`<li>${esc(s)}</li>`).join('')}</ol>`:''}
       ${e.notes?`<div class="journal-card-body">${esc(e.notes)}</div>`:''}
@@ -2328,24 +2534,98 @@ function renderBehemoths(){
 // ── Challenge Record (grouped by epoch, newest first, newest open) ──
 function renderChallenges(){
   const el=document.getElementById('challenges-list');
-  const list=live(challengeRecord);
-  const deletedBlock=recentlyDeletedHtml(deletedJournalItems('challenge',challengeRecord));
-  if(!list.length){el.innerHTML='<p class="journal-empty">No challenges recorded yet.</p>'+deletedBlock;return;}
+  const current=live(challengeRecord)
+    .filter(c=>challengeStatus(c)==='current')
+    .sort((a,b)=>Number(b.epoch||0)-Number(a.epoch||0) || (b.updatedAt||0)-(a.updatedAt||0));
+  const resolved=live(challengeRecord)
+    .filter(c=>challengeStatus(c)==='resolved')
+    .sort((a,b)=>Number(b.epoch||0)-Number(a.epoch||0) || (b.updatedAt||0)-(a.updatedAt||0));
+  const looming=loomingSorted();
+  const deletedBlock=recentlyDeletedHtml([
+    ...deletedJournalItems('challenge',challengeRecord),
+    ...deletedJournalItems('looming',loomingChallenges),
+  ]);
+  if(!current.length&&!resolved.length&&!looming.length){
+    el.innerHTML='<p class="journal-empty">No challenges recorded yet.</p>'+deletedBlock;
+    return;
+  }
+  const currentHtml=current.length?`
+    <div class="challenge-section">
+      <h3 class="challenge-section-title">Current</h3>
+      <div class="journal-grid">${current.map(c=>`
+        <div class="journal-card challenge-card status-current">
+          <div class="challenge-card-head">
+            <div class="journal-card-title">${esc(c.name)}</div>
+            <span class="challenge-status-chip status-current">Current</span>
+          </div>
+          <div class="journal-card-sub">${c.cardId?`Card ${esc(c.cardId)}`:''}${c.cardId&&c.epoch?' · ':''}${c.epoch?`Epoch ${esc(c.epoch)}`:''}</div>
+          ${c.goalsCompleted?`<div class="journal-card-sub">Goals completed</div><div class="journal-card-body">${esc(c.goalsCompleted)}</div>`:''}
+          ${c.notes?`<div class="journal-card-body">${esc(c.notes)}</div>`:''}
+          <div class="journal-actions">
+            <button class="btn btn-sm" onclick="setChallengeStatus('${c.id}','resolved')">Resolve</button>
+            <button class="btn btn-sm" onclick="openChallengeEntry('challenge','${c.id}')">Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteJournalEntry('challenge','${c.id}')">Delete</button>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`:'';
+  const loomingHtml=looming.length?`
+    <div class="challenge-section">
+      <h3 class="challenge-section-title">Looming</h3>
+      <div class="looming-list">${looming.map((e,i)=>`
+        <div class="journal-card looming-card status-looming">
+          <div class="looming-order">
+            <button class="btn btn-sm"${i===0?' disabled':''} onclick="moveLooming('${e.id}',-1)">▲</button>
+            <button class="btn btn-sm"${i===looming.length-1?' disabled':''} onclick="moveLooming('${e.id}',1)">▼</button>
+          </div>
+          <div class="looming-main">
+            <div class="challenge-card-head">
+              <div class="journal-card-title">${i+1}. ${esc(e.name)}</div>
+              <span class="challenge-status-chip status-looming">Looming</span>
+            </div>
+            <div class="journal-card-sub">${e.cardId?`Card ${esc(e.cardId)}`:''}${e.cardId&&e.prepareBy?' · ':''}${e.prepareBy?`Prepare by epoch ${esc(e.prepareBy)}`:''}</div>
+            ${e.notes?`<div class="journal-card-body">${esc(e.notes)}</div>`:''}
+            <div class="journal-actions">
+              <button class="btn btn-sm" onclick="promoteLoomingToCurrent('${e.id}')">Make Current</button>
+              <button class="btn btn-sm" onclick="openChallengeEntry('looming','${e.id}')">Edit</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteJournalEntry('looming','${e.id}')">Delete</button>
+            </div>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`:'';
   const byEpoch={};
-  for(const c of list)(byEpoch[c.epoch]??=[]).push(c);
-  const epochs=Object.keys(byEpoch).sort((a,b)=>Number(b)-Number(a));
-  el.innerHTML=epochs.map((ep,i)=>`
+  for(const c of resolved)(byEpoch[c.epoch||'—']??=[]).push(c);
+  const epochs=Object.keys(byEpoch).sort((a,b)=>{
+    if(a==='—') return 1;
+    if(b==='—') return -1;
+    return Number(b)-Number(a);
+  });
+  const resolvedHtml=resolved.length?`
+    <div class="challenge-section">
+      <h3 class="challenge-section-title">Resolved</h3>
+      ${epochs.map((ep,i)=>`
     <details class="epoch-group"${i===0?' open':''}>
       <summary>Epoch ${esc(ep)} — ${byEpoch[ep].length} challenge${byEpoch[ep].length>1?'s':''}</summary>
       <div class="journal-grid">${byEpoch[ep].map(c=>`
-        <div class="journal-card">
-          <div class="journal-card-title">${esc(c.name)}</div>
-          <div class="journal-card-sub">${c.cardId?`Card ${esc(c.cardId)} `:''}${c.outcome?`<span class="outcome-badge ${norm(c.outcome)}">${esc(c.outcome)}</span>`:''}</div>
+        <div class="journal-card challenge-card status-resolved">
+          <div class="challenge-card-head">
+            <div class="journal-card-title">${esc(c.name)}</div>
+            <span class="challenge-status-chip status-resolved">Resolved</span>
+          </div>
+          ${c.cardId?`<div class="journal-card-sub">Card ${esc(c.cardId)}</div>`:''}
+          ${c.goalsCompleted?`<div class="journal-card-sub">Goals completed</div><div class="journal-card-body">${esc(c.goalsCompleted)}</div>`:''}
           ${c.notes?`<div class="journal-card-body">${esc(c.notes)}</div>`:''}
-          ${journalCardActions('challenge',c.id)}
+          <div class="journal-actions">
+            <button class="btn btn-sm" onclick="setChallengeStatus('${c.id}','current')">Reopen</button>
+            <button class="btn btn-sm" onclick="openChallengeEntry('challenge','${c.id}')">Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteJournalEntry('challenge','${c.id}')">Delete</button>
+          </div>
         </div>`).join('')}
       </div>
-    </details>`).join('')+deletedBlock;
+    </details>`).join('')}
+    </div>`:'';
+  el.innerHTML=currentHtml+loomingHtml+resolvedHtml+deletedBlock;
 }
 
 // ── Looming Challenges (ordered, ▲▼ reorder) ──
@@ -2357,27 +2637,7 @@ function moveLooming(id, dir){
   if(i<0||j<0||j>=s.length) return;
   [s[i],s[j]]=[s[j],s[i]];
   s.forEach((e,idx)=>{e.order=idx;e.updatedAt=Date.now();});
-  save(); renderLooming();
-}
-
-function renderLooming(){
-  const el=document.getElementById('looming-list');
-  const s=loomingSorted();
-  el.innerHTML=s.length?s.map((e,i)=>`
-    <div class="journal-card looming-card">
-      <div class="looming-order">
-        <button class="btn btn-sm"${i===0?' disabled':''} onclick="moveLooming('${e.id}',-1)">▲</button>
-        <button class="btn btn-sm"${i===s.length-1?' disabled':''} onclick="moveLooming('${e.id}',1)">▼</button>
-      </div>
-      <div class="looming-main">
-        <div class="journal-card-title">${i+1}. ${esc(e.name)}</div>
-        <div class="journal-card-sub">${e.cardId?`Card ${esc(e.cardId)}`:''}${e.cardId&&e.prepareBy?' · ':''}${e.prepareBy?`Prepare by epoch ${esc(e.prepareBy)}`:''}</div>
-        ${e.notes?`<div class="journal-card-body">${esc(e.notes)}</div>`:''}
-        ${journalCardActions('looming',e.id)}
-      </div>
-    </div>`).join('')
-  :'<p class="journal-empty">No looming challenges.</p>';
-  el.innerHTML+=recentlyDeletedHtml(deletedJournalItems('looming',loomingChallenges));
+  save(); renderChallenges();
 }
 
 // ── Investigations ──

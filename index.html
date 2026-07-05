@@ -66,7 +66,6 @@
       <button class="subtab-btn active" data-sub="culture" onclick="switchJournalTab('culture')">Culture</button>
       <button class="subtab-btn" data-sub="behemoths" onclick="switchJournalTab('behemoths')">Behemoths</button>
       <button class="subtab-btn" data-sub="challenges" onclick="switchJournalTab('challenges')">Challenges</button>
-      <button class="subtab-btn" data-sub="looming" onclick="switchJournalTab('looming')">Looming</button>
       <button class="subtab-btn" data-sub="investigations" onclick="switchJournalTab('investigations')">Investigations</button>
       <button class="subtab-btn" data-sub="notes" onclick="switchJournalTab('notes')">Notes</button>
     </div>
@@ -88,14 +87,10 @@
 
     <!-- CHALLENGE RECORD -->
     <div class="subtab-panel" id="tab-challenges">
-      <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('challenge')">+ Add Challenge</button></div>
+      <div class="controls">
+        <button class="btn btn-primary" onclick="openChallengeEntry()">+ Add Challenge</button>
+      </div>
       <div id="challenges-list"></div>
-    </div>
-
-    <!-- LOOMING CHALLENGES -->
-    <div class="subtab-panel" id="tab-looming">
-      <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('looming')">+ Add Looming Challenge</button></div>
-      <div class="looming-list" id="looming-list"></div>
     </div>
 
     <!-- INVESTIGATIONS -->
