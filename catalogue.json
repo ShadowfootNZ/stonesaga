@@ -6,5 +6,8 @@
   "repoUrl": "https://github.com/ShadowfootNZ/stonesaga",
   "appUrl": "https://apps.shadowfoot.com/stonesaga/",
   "deployDir": ".",
-  "entryPoint": "index.html"
+  "entryPoint": "index.html",
+  "thumbnailPath": "",
+  "keyImagePath": "",
+  "imagePaths": []
 }

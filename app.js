@@ -13,23 +13,24 @@
 //
 // ── DRIVE SYNC TOKEN ENFORCEMENT ───────────────────
 // TODO (by ~2026-07-18): Flip ENFORCE_TOKEN to true in drive-sync.gs and
-//   redeploy the script. The flag shipped false on 2026-07-04 so the script
-//   claims/stores tokens and applies the payload/creation caps without
-//   rejecting stale cached clients. Enforcement is safe once active groups
-//   have synced with the tokened client — their tokens are already stored.
+//   redeploy the script. The tokened script was deployed 2026-07-04 with the
+//   flag false, so it claims/stores tokens and applies the payload/creation
+//   caps without rejecting stale cached clients. Enforcement is safe once
+//   active groups have synced with the tokened client — their tokens are
+//   already stored. Only the flag flip + redeploy remain.
 //
-// ── MAKE REPO PRIVATE ──────────────────────────────
+// ── PUBLISHER PERMISSION / REPO VISIBILITY ─────────
 // TODO (by 2026-07-17, ~2 weeks): Change the GitHub repo from public to
 //   private — it currently republishes copyrighted game content (mark art,
 //   card text). Check the deploy workflow still runs on a private repo
 //   (GitHub Actions: fine; GitHub Pages mirror will stop — primary hosting
 //   is apps.shadowfoot.com via SSH, unaffected).
-//
-// ── STORAGE SIZE GUARD ─────────────────────────────
-// TODO: Add a save-size check. localStorage is ~5MB and save() currently
-//   swallows quota errors silently — data loss without a symptom. Measure the
-//   JSON size on save, warn visibly when approaching the limit (and surface
-//   quota exceptions), and show the current size somewhere (e.g. Drive modal).
+//   NOTE: Permission will be sought from the publisher for this app — it is
+//   useless without owning the game, and the developer already makes the
+//   rulebook and journal freely downloadable, so there's a reasonable case.
+//   NOTE: Brian is monitoring analytics.js results to understand where
+//   visitors from outside the group are coming from — input to the
+//   visibility/permission decision.
 //
 // ── DRIVE IMAGE UPLOADS ────────────────────────────
 // TODO: Upload images (cave wall photos, future map scans) to Google Drive as
@@ -61,8 +62,23 @@ const APP_VERSION = (() => {
     return 'dev';
   }
 })();
-const EXPORT_VERSION = 4; // v4: entries may carry {deleted:true} tombstones; v3 clients render them as live
+const EXPORT_VERSION = 5; // v5: adds codexEntries, culture.outposts, mantle on mantle powers; v4: {deleted:true} tombstones
 const PIP_COLORS  = ['Blue','Red','Yellow','Purple','Grey','Green','Orange','Silver'];
+
+// Card/tile IDs are a 2-letter prefix + digits ("IT13", "BH03"). The known
+// prefix families — more will be discovered as the campaign unfolds:
+const ID_PREFIXES = {
+  BH: 'Behemoth',
+  IT: 'Item',
+  ST: 'Structure',
+  OP: 'Outpost Overlay Tile',
+  OG: 'Glacier Overlay Tile',
+  MA: 'Mantle',
+  GB: 'Goal',
+  KN: 'Knowledge Card',
+  CH: 'Challenge',
+  IV: 'Investigation',
+};
 const PIP_CSS     = {Blue:'blue',Red:'red',Yellow:'yellow',Purple:'purple',Grey:'grey',Green:'green',Orange:'orange',Silver:'silver'};
 
 // Materials are loaded from materials.json at startup.
@@ -159,11 +175,17 @@ let loomingChallenges = [];   // [{id,name,cardId,prepareByEpoch,notes,order,upd
 let investigations    = [];   // [{id,omen,cardId,notes,updatedAt}]
 let notePages         = [];   // [{id,title,body,updatedAt}]
 let caveWall          = [];   // [{id,name,strokes:[{c,w,pts:[x,y,...]}],addedAt,updatedAt}] — vector drawings in a 1000×1000 space
+let codexEntries      = [];   // [{id,entry,title,sourceCategory,sourceId,notes,updatedAt}] — codex entries the group has read
 let provisionalCodes  = {};   // {"Blue 1111": {cardId,name,flavor,gameText,source,updatedAt}} — unverified external data
 
+// culture.outposts: [{id,name,structures:[structure entry ids],notes,updatedAt}] —
+// which known structure types are built in each physical outpost.
 function emptyCulture(){
-  return {tribeName:'', updatedAt:null, structures:[], mantlePowers:[], knowledgeCards:[], taboos:[], pigments:[]};
+  return {tribeName:'', updatedAt:null, structures:[], mantlePowers:[], knowledgeCards:[], taboos:[], pigments:[], outposts:[]};
 }
+
+// Keys of culture that hold entry lists (merge, GC, and counting iterate these).
+const CULTURE_LIST_KEYS = ['structures','mantlePowers','knowledgeCards','taboos','pigments','outposts'];
 
 // ═══════════════════════════════════════════════════
 // TOKEN DATA
@@ -340,6 +362,14 @@ function live(list){return (list||[]).filter(e=>!e.deleted);}
 function liveKeys(obj){return Object.keys(obj||{}).filter(k=>!obj[k]?.deleted);}
 function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 function codeKey(color,digits){return `${color} ${digits}`;}
+// One normalizer for every card/tile-ID input: trims, strips inner spaces,
+// uppercases ("it13" → "IT13"), and prepends the field's prefix family when
+// only digits were typed ("13" → "IT13"). See ID_PREFIXES.
+function normalizeCardId(v, prefix){
+  const t=(v||'').trim().replace(/\s+/g,'').toUpperCase();
+  if(!t) return '';
+  return (prefix&&/^\d/.test(t)) ? prefix+t : t;
+}
 function titleCase(s){return s.replace(/\b\w/g,c=>c.toUpperCase());}
 
 function pipHtml(color){
@@ -497,7 +527,7 @@ function switchWorkshopTab(id){
 // Culture / Behemoths / Challenges / Looming / Investigations / Notes live as
 // sub-tabs under the Journal parent tab to keep the top-level tab row phone-sized.
 let journalSubtab='culture';
-const JOURNAL_TAB_RENDER={culture:renderCulture,behemoths:renderBehemoths,challenges:renderChallenges,looming:renderChallenges,investigations:renderInvestigations,notes:renderNotes};
+const JOURNAL_TAB_RENDER={culture:renderCulture,behemoths:renderBehemoths,challenges:renderChallenges,looming:renderChallenges,investigations:renderInvestigations,codex:renderCodexEntries,notes:renderNotes};
 const BEHEMOTH_DEMEANOR_MIN = 1;
 const BEHEMOTH_DEMEANOR_DEFAULT = 4;
 const BEHEMOTH_DEMEANOR_MAX = 9;
@@ -1229,7 +1259,7 @@ function outsideClose(e,id){if(e.target===document.getElementById(id)) document.
 
 function saveRecipe(){
   const name=document.getElementById('f-name').value.trim();
-  const itemNum=document.getElementById('f-item-num').value.trim();
+  const itemNum=normalizeCardId(document.getElementById('f-item-num').value,'IT'); // "13" / "it13" → "IT13"
   if(!name){alert('Item name is required.');return;}
   if(!itemNum){alert('Item number is required.');return;}
   // Check for duplicate item number (only when adding new, or changing the number on edit).
@@ -1421,12 +1451,49 @@ let pendingImport = null; // {recipes, nullCodes, meta} awaiting user choice
 // bookkeeping (driveLastSynced etc). Content edits go through save(), which
 // stamps lastUpdated so the unsynced indicator can compare it to the last push.
 function persist() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+  const json = JSON.stringify({
     recipes, nullCodes, tokenData, customMaterials,
-    culture, behemoths, challengeRecord, loomingChallenges, investigations, notePages, caveWall, provisionalCodes,
+    culture, behemoths, challengeRecord, loomingChallenges, investigations, notePages, caveWall, codexEntries, provisionalCodes,
     lastUpdated, driveFileId, driveToken, driveLastSynced,
-  }));
+  });
+  storageLastBytes = json.length * 2; // localStorage is UTF-16: ~2 bytes per char
+  try {
+    localStorage.setItem(STORAGE_KEY, json);
+  } catch {
+    alert('Saving FAILED — browser storage is full, so your latest change is NOT saved locally.\n\nExport JSON or sync to Drive now to avoid losing work, then free space (cave wall drawings are the biggest consumers).');
+    updateSyncBadge();
+    return;
+  }
+  warnIfStorageNearlyFull();
   updateSyncBadge();
+}
+
+// ── Storage size guard ──
+// save() used to swallow quota errors silently — data loss without a symptom.
+// Now the size is measured on every write, a visible warning fires as the
+// ~5MB quota approaches, and the Drive modal shows the current size.
+const STORAGE_QUOTA_BYTES = 5 * 1024 * 1024;
+const STORAGE_WARN_RATIO  = 0.8;
+let storageLastBytes = 0;
+let storageWarnedAt  = 0; // bytes at last warning — re-warn only after 5% more growth
+
+function storageSizeBytes() {
+  if (!storageLastBytes) {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    storageLastBytes = raw ? raw.length * 2 : 0;
+  }
+  return storageLastBytes;
+}
+
+function fmtBytes(n) {
+  return n >= 1024*1024 ? `${(n/1024/1024).toFixed(1)} MB` : `${Math.round(n/1024)} KB`;
+}
+
+function warnIfStorageNearlyFull() {
+  if (storageLastBytes > STORAGE_QUOTA_BYTES * STORAGE_WARN_RATIO && storageLastBytes > storageWarnedAt * 1.05) {
+    storageWarnedAt = storageLastBytes;
+    alert(`Browser storage is ${Math.round(storageLastBytes / STORAGE_QUOTA_BYTES * 100)}% full (${fmtBytes(storageLastBytes)} of ~${fmtBytes(STORAGE_QUOTA_BYTES)}).\n\nExport JSON as a backup. Cave wall drawings are the biggest consumers — deleting unneeded ones frees the most space.`);
+  }
 }
 
 function save() {
@@ -1487,6 +1554,7 @@ function buildExportPayload() {
     investigations,
     notePages,
     caveWall,
+    codexEntries,
     provisionalCodes,
     driveFileId,
     driveToken,
@@ -1496,18 +1564,25 @@ function buildExportPayload() {
 function journalEntryCount(d) {
   return live(d.behemoths).length + live(d.challengeRecord).length + live(d.loomingChallenges).length
        + live(d.investigations).length + live(d.notePages).length + live(d.caveWall).length
+       + live(d.codexEntries).length
        + liveKeys(d.provisionalCodes).length
-       + (d.culture ? (d.culture.tribeName?1:0) + ['structures','mantlePowers','knowledgeCards','taboos','pigments']
+       + (d.culture ? (d.culture.tribeName?1:0) + CULTURE_LIST_KEYS
            .reduce((n,k)=>n+live(d.culture[k]).length,0) : 0);
+}
+
+// Pretty-print the export, but keep numeric arrays (cave wall stroke pts) on
+// one line — split across lines they are ~97% of the output and quadruple it.
+function exportJsonString(payload) {
+  return JSON.stringify(payload, null, 2).replace(/\[[\s\d,.-]+\]/g, m => m.replace(/\s+/g, ''));
 }
 
 function exportData() {
   if (!live(recipes).length && !liveKeys(nullCodes).length && !live(customMaterials).length
-      && !journalEntryCount({culture, behemoths, challengeRecord, loomingChallenges, investigations, notePages, provisionalCodes})) {
+      && !journalEntryCount({culture, behemoths, challengeRecord, loomingChallenges, investigations, notePages, caveWall, codexEntries, provisionalCodes})) {
     alert('Nothing to export.'); return;
   }
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(buildExportPayload(),null,2)], {type:'application/json'}));
+  a.href = URL.createObjectURL(new Blob([exportJsonString(buildExportPayload())], {type:'application/json'}));
   const ts = new Date().toISOString().replace('T',' ').slice(0,16).replace(/[: ]/g,'-');
   a.download = `stonesaga-${ts}.json`;
   a.click();
@@ -1735,11 +1810,7 @@ function mergeCulture(local, incoming) {
   return {
     tribeName: (incomingNewer && incoming.tribeName) ? incoming.tribeName : (local.tribeName || incoming.tribeName || ''),
     updatedAt: Math.max(local.updatedAt||0, incoming.updatedAt||0) || null,
-    structures:     mergeById(local.structures||[],     incoming.structures),
-    mantlePowers:   mergeById(local.mantlePowers||[],   incoming.mantlePowers),
-    knowledgeCards: mergeById(local.knowledgeCards||[], incoming.knowledgeCards),
-    taboos:         mergeById(local.taboos||[],         incoming.taboos),
-    pigments:       mergeById(local.pigments||[],       incoming.pigments),
+    ...Object.fromEntries(CULTURE_LIST_KEYS.map(k => [k, mergeById(local[k]||[], incoming[k])])),
   };
 }
 
@@ -1762,6 +1833,7 @@ function doImport(mode) {
     investigations    = mergeById(investigations,    meta.investigations);
     notePages         = mergeById(notePages,         meta.notePages);
     caveWall          = mergeById(caveWall,          meta.caveWall);
+    codexEntries      = mergeById(codexEntries,      meta.codexEntries);
     provisionalCodes  = mergeByKey(provisionalCodes, meta.provisionalCodes);
     applyConflictResolutions(pendingImport.conflicts || []);
   } else {
@@ -1775,6 +1847,7 @@ function doImport(mode) {
     investigations    = meta.investigations    || [];
     notePages         = meta.notePages         || [];
     caveWall          = meta.caveWall          || [];
+    codexEntries      = meta.codexEntries      || [];
     provisionalCodes  = meta.provisionalCodes  || {};
   }
   // Adopt the group's Drive connection: the file id if we have none, and the
@@ -1857,6 +1930,7 @@ function load() {
       investigations    = d.investigations    || [];
       notePages         = d.notePages         || [];
       caveWall          = d.caveWall          || [];
+      codexEntries      = d.codexEntries      || [];
       provisionalCodes  = d.provisionalCodes  || {};
       lastUpdated     = d.lastUpdated     || null;
       driveFileId     = d.driveFileId     || null;
@@ -1883,8 +1957,9 @@ function gcTombstones() {
   investigations    = investigations.filter(fresh);
   notePages         = notePages.filter(fresh);
   caveWall          = caveWall.filter(fresh);
+  codexEntries      = codexEntries.filter(fresh);
   customMaterials   = customMaterials.filter(fresh);
-  for (const k of ['structures','mantlePowers','knowledgeCards','taboos','pigments'])
+  for (const k of CULTURE_LIST_KEYS)
     culture[k] = (culture[k]||[]).filter(fresh);
   for (const o of [nullCodes, provisionalCodes])
     for (const k of Object.keys(o)) if (!fresh(o[k])) delete o[k];
@@ -2064,7 +2139,8 @@ function closeDriveModal() { document.getElementById('drive-overlay').classList.
 function renderDriveModal() {
   const statusEl  = document.getElementById('drive-modal-status');
   const actionsEl = document.getElementById('drive-modal-actions');
-  const versionHtml = '<div id="app-version-drive"></div>';
+  const sizeHtml = `<div class="drive-synced">Local save size: ${fmtBytes(storageSizeBytes())} of ~${fmtBytes(STORAGE_QUOTA_BYTES)} browser storage</div>`;
+  const versionHtml = sizeHtml + '<div id="app-version-drive"></div>';
 
   if (!DRIVE_SYNC_URL) {
     statusEl.innerHTML  = '<p class="drive-notice">Drive sync is not yet configured — set <code>DRIVE_SYNC_URL</code> in app.js after deploying drive-sync.gs.</p>' + versionHtml;
@@ -2184,17 +2260,35 @@ function _loadDriveImport(d) {
 // point at the backing list, render redraws the tab. Entries are {id, ...fields,
 // updatedAt} so the Phase-0 merge logic (union by id, newer wins) applies as-is.
 
+// Base-game mantles; expansions add more, so mantle entry is a datalist (free
+// text with suggestions) rather than a closed select.
+const MANTLES = ['Protector','Seeker','Storyteller','Wanderer'];
+// "mantle of the seeker" / "Seeker" → "Seeker"
+function mantleName(v){
+  return titleCase(v.replace(/^mantle of( the)?\s+/i,'').trim());
+}
+function knownMantles(){
+  return [...new Set([...MANTLES, ...live(culture.mantlePowers).map(e=>e.mantle).filter(Boolean)])].sort();
+}
+
+// Codex-entry source families → the card-ID prefix to assume for digits-only entry
+const CODEX_SOURCES = {
+  'Behemoth card':'BH', 'Journey card':'', 'Night card':'', 'Challenge card':'CH',
+  'Investigation card':'IV', 'Item card':'IT', 'Structure':'ST', 'Mantle':'MA', 'Other':'',
+};
+
 const JOURNAL_SECTIONS = {
   structure: {label:'Structure', get:()=>culture.structures, set:v=>culture.structures=v, render:()=>renderCulture(), fields:[
     {key:'name',  label:'Name', required:true, placeholder:'e.g. Fire Pit'},
     {key:'notes', label:'Notes', type:'textarea'},
   ]},
   mantle: {label:'Mantle Power', get:()=>culture.mantlePowers, set:v=>culture.mantlePowers=v, render:()=>renderCulture(), fields:[
+    {key:'mantle', label:'Mantle', type:'datalist', options:()=>knownMantles(), placeholder:'e.g. Seeker', normalize:v=>mantleName(v)},
     {key:'name', label:'Name', required:true},
     {key:'description', label:'Description', type:'textarea'},
   ]},
   knowledge: {label:'Knowledge Card', get:()=>culture.knowledgeCards, set:v=>culture.knowledgeCards=v, render:()=>renderCulture(), fields:[
-    {key:'cardId', label:'Card ID', placeholder:'e.g. KN04'},
+    {key:'cardId', label:'Card ID', placeholder:'e.g. KN04', normalize:v=>normalizeCardId(v,'KN')},
     {key:'name', label:'Name', required:true},
   ]},
   taboo: {label:'Taboo', get:()=>culture.taboos, set:v=>culture.taboos=v, render:()=>renderCulture(), fields:[
@@ -2203,9 +2297,23 @@ const JOURNAL_SECTIONS = {
   pigment: {label:'Pigment', get:()=>culture.pigments, set:v=>culture.pigments=v, render:()=>renderCulture(), fields:[
     {key:'name', label:'Pigment', required:true, placeholder:'e.g. Red ochre'},
   ]},
+  outpost: {label:'Outpost', get:()=>culture.outposts, set:v=>culture.outposts=v, render:()=>renderCulture(), fields:[
+    {key:'name', label:'Name', required:true, placeholder:'e.g. First Camp'},
+    {key:'structures', label:'Structures built here', type:'checks',
+      options:()=>live(culture.structures).map(s=>({value:s.id,label:s.name})),
+      emptyText:'No structures known yet — add structure types under Structures first.'},
+    {key:'notes', label:'Notes', type:'textarea'},
+  ]},
+  codex: {label:'Codex Entry', get:()=>codexEntries, set:v=>codexEntries=v, render:()=>renderCodexEntries(), fields:[
+    {key:'entry', label:'Codex entry', required:true, placeholder:'e.g. 117'},
+    {key:'title', label:'Title', placeholder:'optional'},
+    {key:'sourceCategory', label:'Source type', type:'select', defaultValue:'', options:['',...Object.keys(CODEX_SOURCES)]},
+    {key:'sourceId', label:'Source card ID', placeholder:'e.g. BH03', normalize:(v,e)=>normalizeCardId(v,CODEX_SOURCES[e.sourceCategory]||'')},
+    {key:'notes', label:'Notes', type:'textarea', rows:3},
+  ]},
   behemoth: {label:'Behemoth', get:()=>behemoths, set:v=>behemoths=v, render:()=>renderBehemoths(), fields:[
     {key:'name', label:'Name', required:true},
-    {key:'lairHex', label:'Lair hex', placeholder:'e.g. VV02'},
+    {key:'lairHex', label:'Lair hex', placeholder:'e.g. VV02', normalize:v=>normalizeCardId(v)},
     {key:'demeanor', label:'Demeanor', type:'number', required:true, min:BEHEMOTH_DEMEANOR_MIN, max:BEHEMOTH_DEMEANOR_MAX, defaultValue:BEHEMOTH_DEMEANOR_DEFAULT, placeholder:'1-9'},
     {key:'secrets', label:'Revealed secrets (one per line, in reveal order)', type:'lines', rows:4},
     {key:'notes', label:'Notes', type:'textarea'},
@@ -2215,20 +2323,20 @@ const JOURNAL_SECTIONS = {
     {key:'epoch', label:'Epoch', type:'number', placeholder:'e.g. 2'},
     {key:'prepareBy', label:'Prepare by (epoch)', placeholder:'e.g. 3'},
     {key:'name', label:'Name', required:true},
-    {key:'cardId', label:'Card ID', placeholder:'e.g. CH08'},
+    {key:'cardId', label:'Card ID', placeholder:'e.g. CH08', normalize:v=>normalizeCardId(v,'CH')},
     {key:'goalsCompleted', label:'Goals completed', type:'textarea', rows:3},
     {key:'notes', label:'Notes', type:'textarea'},
   ]},
   looming: {label:'Looming Challenge', get:()=>loomingChallenges, set:v=>loomingChallenges=v, render:()=>renderChallenges(),
     onNew:e=>{e.order=loomingChallenges.reduce((m,x)=>Math.max(m,x.order??-1),-1)+1;}, fields:[
     {key:'name', label:'Name', required:true},
-    {key:'cardId', label:'Card ID'},
+    {key:'cardId', label:'Card ID', normalize:v=>normalizeCardId(v,'CH')},
     {key:'prepareBy', label:'Prepare by (epoch)', placeholder:'e.g. 3'},
     {key:'notes', label:'Notes', type:'textarea'},
   ]},
   investigation: {label:'Investigation', get:()=>investigations, set:v=>investigations=v, render:()=>renderInvestigations(), fields:[
     {key:'omen', label:'Omen (the trigger / sign)', required:true},
-    {key:'cardId', label:'Investigation card ID', placeholder:'e.g. IV03'},
+    {key:'cardId', label:'Investigation card ID', placeholder:'e.g. IV03', normalize:v=>normalizeCardId(v,'IV')},
     {key:'notes', label:'Notes / findings', type:'textarea', rows:4},
   ]},
   note: {label:'Note Page', get:()=>notePages, set:v=>notePages=v, render:()=>renderNotes(), fields:[
@@ -2246,10 +2354,53 @@ function jeFieldHtml(f, val){
     return `<div class="form-group">${label}<textarea class="form-control" id="${id}" rows="${f.rows||3}" placeholder="${esc(f.placeholder||'')}">${esc(val)}</textarea></div>`;
   if(f.type==='select')
     return `<div class="form-group">${label}<select class="form-control" id="${id}">${f.options.map(o=>`<option value="${esc(o)}"${o===val?' selected':''}>${esc(o)||'—'}</option>`).join('')}</select></div>`;
+  if(f.type==='checks'){ // multi-pick from a dynamic option list; val is an array of option values
+    const opts=typeof f.options==='function'?f.options():f.options;
+    if(!opts.length)
+      return `<div class="form-group">${label}<p class="journal-empty">${esc(f.emptyText||'Nothing to pick from yet.')}</p></div>`;
+    return `<div class="form-group">${label}<div class="je-checks" id="${id}">${opts.map(o=>
+      `<label class="je-check"><input type="checkbox" value="${esc(o.value)}"${(val||[]).includes(o.value)?' checked':''}> ${esc(o.label)}</label>`).join('')}</div></div>`;
+  }
+  if(f.type==='datalist'){ // free text with suggestions — for open-ended sets like mantles
+    const opts=typeof f.options==='function'?f.options():f.options;
+    return `<div class="form-group">${label}<input class="form-control" id="${id}" list="${id}-list" placeholder="${esc(f.placeholder||'')}" value="${esc(val)}"><datalist id="${id}-list">${opts.map(o=>`<option value="${esc(o)}">`).join('')}</datalist></div>`;
+  }
   const extraAttrs = f.type==='number'
     ? ` min="${f.min??''}" max="${f.max??''}" step="${f.step??1}"`
     : '';
   return `<div class="form-group">${label}<input class="form-control" id="${id}" type="${f.type==='number'?'number':'text'}"${extraAttrs} placeholder="${esc(f.placeholder||'')}" value="${esc(val)}"></div>`;
+}
+
+function jeFieldValue(f, v){
+  return f.type==='lines' ? (v||[]).join('\n') : f.type==='checks' ? (v||[]) : (v??'');
+}
+
+// Read every field of the entry form back into `entry`, validating as we go.
+// Shared by saveJournalEntry and saveChallengeEntry. Returns null (after an
+// alert) when validation fails.
+function readJournalFields(spec, entry){
+  for(const f of spec.fields){
+    let v;
+    if(f.type==='checks'){
+      v=[...document.querySelectorAll('#je-f-'+f.key+' input:checked')].map(i=>i.value);
+    }else{
+      v=document.getElementById('je-f-'+f.key).value;
+      if(f.type==='lines') v=v.split('\n').map(s=>s.trim()).filter(Boolean);
+      else v=v.trim();
+    }
+    if(f.required&&((f.type==='lines'||f.type==='checks')?!v.length:!v)){alert(`${f.label} is required.`);return null;}
+    if(f.type==='number'&&v){
+      const n=Number(v);
+      if(!Number.isFinite(n)){alert(`${f.label} must be a number.`);return null;}
+      const min=f.min??n;
+      const max=f.max??n;
+      if(n<min||n>max){alert(`${f.label} must be between ${min} and ${max}.`);return null;}
+      v=Math.round(n);
+    }
+    if(f.normalize&&typeof v==='string'&&v) v=f.normalize(v, entry);
+    entry[f.key]=v;
+  }
+  return entry;
 }
 
 function openJournalEntry(section, id){
@@ -2261,10 +2412,10 @@ function openJournalEntry(section, id){
   document.getElementById('je-title').textContent=(entry?'Edit ':'Add ')+spec.label;
   document.getElementById('je-fields').innerHTML=spec.fields.map(f=>{
     const v=entry ? entry[f.key] : (f.defaultValue ?? undefined);
-    return jeFieldHtml(f, f.type==='lines'?(v||[]).join('\n'):(v??''));
+    return jeFieldHtml(f, jeFieldValue(f, v));
   }).join('');
   document.getElementById('je-overlay').classList.remove('hidden');
-  document.getElementById('je-f-'+spec.fields[0].key).focus();
+  document.getElementById('je-f-'+spec.fields[0].key)?.focus();
 }
 
 function openChallengeEntry(sourceSection='challenge', id){
@@ -2284,10 +2435,10 @@ function openChallengeEntry(sourceSection='challenge', id){
   document.getElementById('je-title').textContent=(entry?'Edit ':'Add ')+spec.label;
   document.getElementById('je-fields').innerHTML=spec.fields.map(f=>{
     const v=entry ? entry[f.key] : (f.defaultValue ?? undefined);
-    return jeFieldHtml(f, f.type==='lines'?(v||[]).join('\n'):(v??''));
+    return jeFieldHtml(f, jeFieldValue(f, v));
   }).join('');
   document.getElementById('je-overlay').classList.remove('hidden');
-  document.getElementById('je-f-'+spec.fields[0].key).focus();
+  document.getElementById('je-f-'+spec.fields[0].key)?.focus();
 }
 
 function closeJournalEntry(){document.getElementById('je-overlay').classList.add('hidden');jeState=null;}
@@ -2296,22 +2447,8 @@ function saveJournalEntry(){
   if(!jeState) return;
   if(jeState.section==='challenge') return saveChallengeEntry();
   const spec=JOURNAL_SECTIONS[jeState.section];
-  const entry={id:jeState.id||genId(), updatedAt:Date.now()};
-  for(const f of spec.fields){
-    let v=document.getElementById('je-f-'+f.key).value;
-    if(f.type==='lines') v=v.split('\n').map(s=>s.trim()).filter(Boolean);
-    else v=v.trim();
-    if(f.required&&(f.type==='lines'?!v.length:!v)){alert(`${f.label} is required.`);return;}
-    if(f.type==='number'&&v){
-      const n=Number(v);
-      if(!Number.isFinite(n)){alert(`${f.label} must be a number.`);return;}
-      const min=f.min??n;
-      const max=f.max??n;
-      if(n<min||n>max){alert(`${f.label} must be between ${min} and ${max}.`);return;}
-      v=Math.round(n);
-    }
-    entry[f.key]=v;
-  }
+  const entry=readJournalFields(spec, {id:jeState.id||genId(), updatedAt:Date.now()});
+  if(!entry) return;
   if(!jeState.id&&spec.onNew) spec.onNew(entry);
   const list=spec.get();
   const i=list.findIndex(e=>e.id===entry.id);
@@ -2322,22 +2459,8 @@ function saveJournalEntry(){
 
 function saveChallengeEntry(){
   const spec=JOURNAL_SECTIONS.challenge;
-  const entry={id:jeState.id||genId(), updatedAt:Date.now()};
-  for(const f of spec.fields){
-    let v=document.getElementById('je-f-'+f.key).value;
-    if(f.type==='lines') v=v.split('\n').map(s=>s.trim()).filter(Boolean);
-    else v=v.trim();
-    if(f.required&&(f.type==='lines'?!v.length:!v)){alert(`${f.label} is required.`);return;}
-    if(f.type==='number'&&v){
-      const n=Number(v);
-      if(!Number.isFinite(n)){alert(`${f.label} must be a number.`);return;}
-      const min=f.min??n;
-      const max=f.max??n;
-      if(n<min||n>max){alert(`${f.label} must be between ${min} and ${max}.`);return;}
-      v=Math.round(n);
-    }
-    entry[f.key]=v;
-  }
+  const entry=readJournalFields(spec, {id:jeState.id||genId(), updatedAt:Date.now()});
+  if(!entry) return;
   if(entry.status!=='looming' && !entry.epoch){alert('Epoch is required for current and resolved challenges.');return;}
   const sourceSection=jeState.sourceSection||'challenge';
   if(sourceSection==='looming'){
@@ -2381,7 +2504,7 @@ function saveChallengeEntry(){
   save(); closeJournalEntry(); renderChallenges();
 }
 
-function jeLabelOf(e){return e.name||e.title||e.omen||e.text||'entry';}
+function jeLabelOf(e){return e.name||e.title||e.omen||e.text||(e.entry?`Entry ${e.entry}`:'entry');}
 
 function deleteJournalEntry(section, id){
   const spec=JOURNAL_SECTIONS[section];
@@ -2481,28 +2604,55 @@ function saveTribeName(v){
   save();
 }
 
+function cultureRowHtml(sec, e, fmt){
+  return `
+        <div class="culture-row">
+          <div style="flex:1">${fmt(e)}</div>
+          <button class="btn btn-sm" onclick="openJournalEntry('${sec}','${e.id}')">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteJournalEntry('${sec}','${e.id}')">Del</button>
+        </div>`;
+}
+
+// Mantle powers grouped by their parent mantle; powers without one gather
+// under "Unassigned". A flat list is kept while nothing is assigned yet.
+function mantlePowersHtml(list, fmt){
+  const groups={};
+  for(const e of list)(groups[e.mantle||'']??=[]).push(e);
+  const names=Object.keys(groups).filter(Boolean).sort((a,b)=>a.localeCompare(b));
+  if(!names.length) return list.map(e=>cultureRowHtml('mantle',e,fmt)).join('');
+  const section=(title,es)=>`<div class="culture-group-title">${esc(title)}</div>`+es.map(e=>cultureRowHtml('mantle',e,fmt)).join('');
+  return names.map(m=>section(`Mantle of the ${m}`,groups[m])).join('')
+    +(groups['']?section('Unassigned',groups['']):'');
+}
+
+function outpostStructureNames(e){
+  return (e.structures||[])
+    .map(id=>(culture.structures||[]).find(s=>s.id===id&&!s.deleted)?.name)
+    .filter(Boolean);
+}
+
 function renderCulture(){
   document.getElementById('culture-tribe').value=culture.tribeName||'';
+  // [section, title, entries, row formatter, optional custom list renderer]
   const blocks=[
     ['structure','Structures',live(culture.structures),e=>`<strong>${esc(e.name)}</strong>${e.notes?` — ${esc(e.notes)}`:''}`],
-    ['mantle','Mantle Powers',live(culture.mantlePowers),e=>`<strong>${esc(e.name)}</strong>${e.description?` — ${esc(e.description)}`:''}`],
+    ['outpost','Outposts',live(culture.outposts),e=>{
+      const names=outpostStructureNames(e);
+      return `<strong>${esc(e.name)}</strong>${names.length?` — ${esc(names.join(', '))}`:' — <em>no structures yet</em>'}${e.notes?`<div class="culture-row-notes">${esc(e.notes)}</div>`:''}`;
+    }],
+    ['mantle','Mantle Powers',live(culture.mantlePowers),e=>`<strong>${esc(e.name)}</strong>${e.description?` — ${esc(e.description)}`:''}`,mantlePowersHtml],
     ['knowledge','Knowledge Cards',live(culture.knowledgeCards),e=>`${e.cardId?`<span class="recipe-code" style="font-size:.75rem">${esc(e.cardId)}</span> `:''}<strong>${esc(e.name)}</strong>`],
     ['taboo','Taboos',live(culture.taboos),e=>esc(e.text)],
     ['pigment','Pigments',live(culture.pigments),e=>esc(e.name)],
   ];
   const deletedBlock=recentlyDeletedHtml([
-    ['structure',culture.structures],['mantle',culture.mantlePowers],['knowledge',culture.knowledgeCards],
-    ['taboo',culture.taboos],['pigment',culture.pigments],
+    ['structure',culture.structures],['outpost',culture.outposts],['mantle',culture.mantlePowers],
+    ['knowledge',culture.knowledgeCards],['taboo',culture.taboos],['pigment',culture.pigments],
   ].flatMap(([sec,list])=>deletedJournalItems(sec,list)));
-  document.getElementById('culture-lists').innerHTML=blocks.map(([sec,title,list,fmt])=>`
+  document.getElementById('culture-lists').innerHTML=blocks.map(([sec,title,list,fmt,listHtml])=>`
     <div class="culture-block">
       <h3>${title}<button class="btn btn-sm" onclick="openJournalEntry('${sec}')">+ Add</button></h3>
-      ${list.length?list.map(e=>`
-        <div class="culture-row">
-          <div style="flex:1">${fmt(e)}</div>
-          <button class="btn btn-sm" onclick="openJournalEntry('${sec}','${e.id}')">Edit</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteJournalEntry('${sec}','${e.id}')">Del</button>
-        </div>`).join('')
+      ${list.length?(listHtml?listHtml(list,fmt):list.map(e=>cultureRowHtml(sec,e,fmt)).join(''))
       :'<p class="journal-empty">None yet.</p>'}
     </div>`).join('')+deletedBlock;
 }
@@ -2655,6 +2805,26 @@ function renderInvestigations(){
   +recentlyDeletedHtml(deletedJournalItems('investigation',investigations));
 }
 
+// ── Codex Entries Read ──
+// Sorted by entry number so "have we read 117?" is a quick scan.
+function renderCodexEntries(){
+  const el=document.getElementById('codex-list');
+  const list=live(codexEntries).sort((a,b)=>{
+    const na=parseInt(a.entry,10), nb=parseInt(b.entry,10);
+    if(Number.isFinite(na)&&Number.isFinite(nb)&&na!==nb) return na-nb;
+    return String(a.entry||'').localeCompare(String(b.entry||''));
+  });
+  el.innerHTML=(list.length?list.map(e=>`
+    <div class="journal-card">
+      <div class="journal-card-title">Entry ${esc(e.entry)}${e.title?` — ${esc(e.title)}`:''}</div>
+      ${(e.sourceCategory||e.sourceId)?`<div class="journal-card-sub">Source: ${esc([e.sourceCategory,e.sourceId].filter(Boolean).join(' · '))}</div>`:''}
+      ${e.notes?`<div class="journal-card-body">${esc(e.notes)}</div>`:''}
+      ${journalCardActions('codex',e.id)}
+    </div>`).join('')
+  :'<p class="journal-empty">No codex entries recorded yet. When a card sends you to the codex, log it here.</p>')
+  +recentlyDeletedHtml(deletedJournalItems('codex',codexEntries));
+}
+
 // ── Cave Wall ──────────────────────────────────────
 // Vector cave drawings. Strokes are captured with PointerEvents in a fixed
 // 1000×1000 logical space and rendered as SVG, so drawings are a few KB of
@@ -2713,10 +2883,24 @@ function cwSvg(strokes){
   return `<svg viewBox="0 0 ${CAVE_SIZE} ${CAVE_SIZE}" preserveAspectRatio="xMidYMid meet">${cwStrokesInner(strokes)}</svg>`;
 }
 
+// View order is a per-device preference, not shared state — it lives in its
+// own localStorage key, outside the synced save.
+let caveWallSort=(()=>{try{return localStorage.getItem('stonesaga_cave_sort')||'added';}catch{return 'added';}})();
+function toggleCaveWallSort(){
+  caveWallSort=caveWallSort==='name'?'added':'name';
+  try{localStorage.setItem('stonesaga_cave_sort',caveWallSort);}catch{/* view pref only */}
+  renderCaveWall();
+}
+
 function renderCaveWall(){
   const el=document.getElementById('cave-wall-list');
-  // Creation order, oldest first — the wall fills up as the saga unfolds
-  const list=live(caveWall).sort((a,b)=>(a.addedAt||0)-(b.addedAt||0));
+  const sortBtn=document.getElementById('cave-sort');
+  if(sortBtn) sortBtn.textContent=caveWallSort==='name'?'Sorted: A–Z':'Sorted: oldest first';
+  // Default: creation order, oldest first — the wall fills up as the saga
+  // unfolds. Alphabetical helps find a specific mark once the wall is large.
+  const list=live(caveWall).sort(caveWallSort==='name'
+    ?(a,b)=>(a.name||'').localeCompare(b.name||'')
+    :(a,b)=>(a.addedAt||0)-(b.addedAt||0));
   el.innerHTML=(list.length?list.map(e=>`
     <div class="cave-card">
       <div class="cave-thumb" onclick="openCaveEditor('${e.id}')" title="Tap to edit">${cwSvg(e.strokes||[])}</div>
@@ -2773,11 +2957,13 @@ function saveCaveDrawing(){
   if(!cwState) return;
   const name=document.getElementById('cw-name').value.trim();
   if(!name){alert('Give the drawing a name.');return;}
+  // Simplify on save too — compacts legacy drawings recorded before cwSimplify
+  const strokes=cwState.strokes.map(s=>({...s,pts:cwSimplify(s.pts)}));
   if(cwState.id){
     const e=caveWall.find(x=>x.id===cwState.id);
-    if(e){e.name=name;e.strokes=cwState.strokes;e.updatedAt=Date.now();}
+    if(e){e.name=name;e.strokes=strokes;e.updatedAt=Date.now();}
   }else{
-    caveWall.push({id:genId(),name,strokes:cwState.strokes,addedAt:Date.now(),updatedAt:Date.now()});
+    caveWall.push({id:genId(),name,strokes,addedAt:Date.now(),updatedAt:Date.now()});
   }
   document.getElementById('cave-overlay').classList.add('hidden');
   document.body.classList.remove('cave-editor-open');
@@ -2855,6 +3041,32 @@ function cwPoint(e,svg){
   return [x,y];
 }
 
+// Pointer sampling keeps near-every-pixel points; Ramer–Douglas–Peucker at
+// ~1.5 units in the 1000-unit space drops most of them with no visible change
+// (rendering smooths through midpoints anyway). Strokes are 97% of save size,
+// so this is the main defence against the localStorage quota.
+const CW_SIMPLIFY_EPS=1.5;
+function cwSimplify(pts,eps=CW_SIMPLIFY_EPS){
+  const n=pts.length/2;
+  if(n<=2) return pts;
+  const keep=new Uint8Array(n); keep[0]=keep[n-1]=1;
+  const stack=[[0,n-1]];
+  while(stack.length){
+    const [a,b]=stack.pop();
+    const ax=pts[2*a],ay=pts[2*a+1],dx=pts[2*b]-ax,dy=pts[2*b+1]-ay;
+    const len=Math.hypot(dx,dy)||1e-9;
+    let maxD=0,idx=-1;
+    for(let i=a+1;i<b;i++){
+      const d=Math.abs((pts[2*i]-ax)*dy-(pts[2*i+1]-ay)*dx)/len;
+      if(d>maxD){maxD=d;idx=i;}
+    }
+    if(maxD>eps){keep[idx]=1;stack.push([a,idx],[idx,b]);}
+  }
+  const out=[];
+  for(let i=0;i<n;i++) if(keep[i]) out.push(pts[2*i],pts[2*i+1]);
+  return out;
+}
+
 // Palm rejection: once a real pen has been seen this session, ignore touch pointers.
 function cwIgnorePointer(e){
   if(e.pointerType==='pen') cwState.penSeen=true;
@@ -2890,6 +3102,7 @@ function cwPointerMove(e){
 function cwPointerUp(e){
   if(!cwState?.cur||e.pointerId!==cwState.pointerId) return;
   e.preventDefault();
+  cwState.cur.pts=cwSimplify(cwState.cur.pts);
   cwState.strokes.push(cwState.cur);
   const svg=document.getElementById('cw-canvas');
   try{svg.releasePointerCapture(e.pointerId);}catch{/* already released / unsupported */}
