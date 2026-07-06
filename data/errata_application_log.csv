@@ -1,5 +1,5 @@
 target,codex_group,page_ref,errata_version_or_date,action,matched_stable_key,matched_source_id_or_name,status,errata_applied,change_summary,errata_text
-Table of Contents,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,,v1.3.0,Added,,,manual_review,False,No matching record found.,"The final two items on this list should read:
+Table of Contents,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,,v1.3.0,Added,,,applied,True,Applied by corrected TOC range configuration.,"The final two items on this list should read:
 Hex Key...219-223
 Mark List...225-227"
 Outcome 017,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,6,v1.2.2,Added,outcomes-017,017,manual_review,False,Instruction requires manual review or source text could not be matched safely.,FAQ: Resolving this entry (and being hurled out of the hex) ends the encounter.
@@ -59,18 +59,18 @@ C) The leader mutters about a great cosmic unity coming to the valley: Add A Tim
 Outcome 908,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,102,v1.2.0,Added,outcomes-908,908,applied,True,Prepended errata sentence/text.,"In option B), Step 3 should begin ""If it is Epoch 1 (or you are playing Endless Mode) and there are 1 or more unplaced glacier overlays, roll 1d6 and place glaciers as follows:""
 In option B), a ""Step 4"" should exist that reads: ""Step 4: Shuffle JV01-06 into the Journey deck and NV01-03 into the Night deck, if able."""
 Outcome 973,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,108,v1.2.0,Updated,outcomes-973,973,applied,True,Replaced first sentence.,"This entry's first sentence should read ""Randomly select an unplaced behemoth lair and place it inactive in a hex in your hex's terrain tray or an adjacent terrain tray."""
-Cloud FP12,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,115,v1.0.1,Added,,,manual_review,False,No matching record found.,"The entry labelled ""FP06"" should instead be labelled ""FP12""."
-Cloud FP12,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,115,v1.3.0,Added,,,manual_review,False,No matching record found.,"The ""A)"" and ""B)"" results should be swapped."
+Cloud FP12,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,115,v1.0.1,Added,omens-cloud-fp12,FP12,applied,True,Relabelled FP06 as FP12.,"The entry labelled ""FP06"" should instead be labelled ""FP12""."
+Cloud FP12,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,115,v1.3.0,Added,omens-cloud-fp12,FP12,manual_review,False,Instruction requires manual review or source text could not be matched safely.,"The ""A)"" and ""B)"" results should be swapped."
 Cloud TT07,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,118,v1.0.0,Added,omens-cloud-tt07,TT07,applied,True,Appended errata sentence/text.,"At the end of this entry, a sentence should exist that reads:
 ""Add Sallow Leaves Fall (CN02) to your looming challenges if you haven't completed it."""
-Comet FP07,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,121,v1.0.1,Added,,,manual_review,False,No matching record found.,"The entry labelled ""FP04"" should instead be labelled ""FP07""."
+Comet FP07,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,121,v1.0.1,Added,omens-comet-fp07,FP07,applied,True,Relabelled FP04 as FP07.,"The entry labelled ""FP04"" should instead be labelled ""FP07""."
 Comet VV09,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,122,v1.2.0,Added,omens-comet-vv09,VV09,manual_review,False,Instruction requires manual review or source text could not be matched safely.,"The section sentence should read ""Then, if you are resourceful, gain Lustrous Powder (IT65) as if you had just crafted it.""
 FAQ: When you gain Lustrous Powder item this way, you place mystery tokens on it as if you had just crafted it."
 Moon AC03,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,,v1.3.0,Added,omens-moon-ac03,AC03,created,True,Created missing Codex entry from errata.,"An entry should exist that reads:
 The Rescuer drops a stick at your feet, then howls a mournful note to the moon before picking the stick back up and shaking it.
 You may discard 1 food token to gain 1 wood."
-Moon FF05,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,124,v1.0.0,Added,,,manual_review,False,No matching record found.,"The entry labelled ""FF08"" should instead be labelled ""FF05""."
-Moon FP08,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,124,v1.0.1,Added,,,manual_review,False,No matching record found.,"The entry labelled ""FP10"" should instead be labelled ""FP08""."
+Moon FF05,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,124,v1.0.0,Added,omens-moon-ff05,FF05,applied,True,Relabelled FF08 as FF05.,"The entry labelled ""FF08"" should instead be labelled ""FF05""."
+Moon FP08,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,124,v1.0.1,Added,omens-moon-fp08,FP08,applied,True,Relabelled FP10 as FP08.,"The entry labelled ""FP10"" should instead be labelled ""FP08""."
 Moon HX01a,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,125,v1.2.0,Added,omens-moon-hx01a,HX01a,manual_review,False,Instruction requires manual review or source text could not be matched safely.,"The 1-29 result should read ""Maybe some mysteries cannot be solved, but you can keep searching. Add Across the Ice (GA06) to your goals."""
 Star FF07,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,,v1.3.0,Added,omens-star-ff07,FF07,manual_review,False,Instruction requires manual review or source text could not be matched safely.,"FAQ
 Q: Is there a star I'm missing on this card?
@@ -82,16 +82,16 @@ Gain <minor_boost> to <conviction>."
 Sun AC06,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,,v1.3.0,Added,omens-sun-ac06,AC06,created,True,Created missing Codex entry from errata.,"An entry should exist that reads:
 The Filch skitters through shadow and light, returning with a small object.
 If your region has a Foraging deck, draw a card from that deck, choose one bonus object on that card if able, then gain the corresponding resource."
-Sun FF02,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,134,v1.1.0,Updated,,,manual_review,False,No matching record found.,"The entry labelled ""FF07"" should instead be labelled ""FF02""."
-Sun FF03,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,134,v1.2.1,Corrected,omens-sun-ff03,FF03,manual_review,False,Instruction requires manual review or source text could not be matched safely.,"The entry labelled ""FF03"" should instead be labelled ""FF04""."
+Sun FF02,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,134,v1.1.0,Updated,omens-sun-ff02,FF02,applied,True,Relabelled FF07 as FF02.,"The entry labelled ""FF07"" should instead be labelled ""FF02""."
+Sun FF03,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,134,v1.2.1,Corrected,omens-sun-ff04,FF04,applied,True,Relabelled FF03 as FF04.,"The entry labelled ""FF03"" should instead be labelled ""FF04""."
 Sun PV09,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,136,v1.0.0,Added,omens-sun-pv09,PV09,applied,True,"Replaced ""strike locations"" with ""strike zones"".","In the second sentence, the text incorrectly refers to ""strike locations"". It should instead refer to ""strike zones""."
-Y2222,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,,v1.1.0,Added,,,manual_review,False,No matching record found.,"Recipe Yellow 2222
+Y2222,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,,v1.1.0,Added,recipes-yellow-y2222,Y2222,applied,True,Replaced recipe flavor text.,"Recipe Yellow 2222
 The entry's flavor text should read: ""Two rods end to end don't create anything useful, perhaps if you rotated one, or if you hardened one of the pieces over a fire to make it stronger...""."
-Y3223,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,,v1.1.0,Added,,,manual_review,False,No matching record found.,"Recipe Yellow 3223
+Y3223,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,,v1.1.0,Added,recipes-yellow-y3223,Y3223,applied,True,Replaced recipe flavor text.,"Recipe Yellow 3223
 The entry's flavor text should read: ""Two rods side by side don't create anything useful, perhaps if you rotated one, or if you hardened one of the pieces over a fire to make it stronger...""."
-R2332,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,,v1.1.0,Added,,,manual_review,False,No matching record found.,"Recipe Red 2332
+R2332,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,,v1.1.0,Added,recipes-red-r2332,R2332,applied,True,Replaced recipe flavor text.,"Recipe Red 2332
 The entry's flavor text should read: ""Two rods together don't create anything useful, perhaps if you rotated one, or if you hardened one of the pieces over a fire to make it stronger...""."
-B2222,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,,v1.1.0,Added,,,manual_review,False,No matching record found.,"Recipe Blue 2222
+B2222,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,,v1.1.0,Added,recipes-blue-b2222,B2222,applied,True,Replaced recipe flavor text.,"Recipe Blue 2222
 The entry's flavor text should read: ""Two rods end to end don't create anything useful, perhaps if you rotated one, or if you hardened one of the pieces over a fire to make it stronger...""."
 Epoch 2,Epoch Transitions	Overlay Reference	Special Regions	  Hex Key,196,v1.3.0,Added,epoch-2-epoch-2,Epoch 2,manual_review,False,Instruction requires manual review or source text could not be matched safely.,"Beginning Epoch 2, Natural Migration
 The second option (""Move to follow resources"") should begin ""If the caravan mark (see right) is on the primal cave wall..."""

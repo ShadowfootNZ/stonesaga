@@ -30,6 +30,7 @@ ERRATA_VERSION_RE = re.compile(r"\b(Added|Corrected|Updated)\s+v?([0-9][0-9A-Za-
 PAGE_REF_RE = re.compile(r"\bOn\s+P\.\s*([0-9]+(?:\s*-\s*[0-9]+)?)", re.I)
 OUTCOME_ID_RE = re.compile(r"^\d{3}$")
 CODE_RE = re.compile(r"^(?:[A-Z]{1,3}\d{2}[a-z]?|[YRBPSON]\d{4})$")
+RECIPE_CODE_RE = re.compile(r"^\d{4}$")
 OPTION_RE = re.compile(r"([A-Z])\)")
 
 
@@ -62,8 +63,9 @@ TOC: list[TocSection] = [
     TocSection("EPOCH 3", "", 203, 208),
     TocSection("OVERLAY REFERENCE", "", 209, 212),
     TocSection("ADVANCED REGION RULES", "", 213, 218),
-    TocSection("MARK LIST", "", 219, 223),
-    TocSection("HEX KEY", "", 225, 227),
+    # Corrected by Codex errata v1.3.0: the printed TOC swaps these two ranges.
+    TocSection("HEX KEY", "", 219, 223),
+    TocSection("MARK LIST", "", 225, 227),
 ]
 
 TOC_ORDER = {(toc.section, toc.subsection): index for index, toc in enumerate(TOC)}
@@ -195,6 +197,15 @@ def clean_page_text(page_no: int, lines: list[str]) -> str:
             continue
         if compact in {"ID", "ENTRY", "IDENTRY"}:
             continue
+        if compact in {
+            "YELLOWRECIPES",
+            "REDRECIPES",
+            "BLUERECIPES",
+            "PURPLERECIPES",
+            "SILVERRECIPES",
+            "ORANGERECIPES",
+        }:
+            continue
         if line.upper() in {toc.section, toc.subsection, "OUTCOMES", "OMENS", "RECIPES"}:
             continue
         if line.upper() == spaced_section:
@@ -272,9 +283,19 @@ def parse_outcomes(pages: dict[int, str]) -> list[Record]:
 
 def parse_code_section(page_no: int, text: str) -> list[Record]:
     section = section_for_page(page_no)
+    if not text.strip():
+        return []
     records: list[Record] = []
     current_code: str | None = None
     current_lines: list[str] = []
+    recipe_prefix_by_subsection = {
+        "YELLOW": "Y",
+        "RED": "R",
+        "BLUE": "B",
+        "PURPLE": "P",
+        "SILVER": "S",
+        "ORANGE": "O",
+    }
 
     def flush() -> None:
         nonlocal current_code, current_lines
@@ -285,9 +306,14 @@ def parse_code_section(page_no: int, text: str) -> list[Record]:
 
     for line in text.splitlines():
         stripped = line.strip()
-        if CODE_RE.fullmatch(stripped):
+        recipe_code = section.section == "RECIPES" and RECIPE_CODE_RE.fullmatch(stripped)
+        omen_code = section.section == "OMENS" and CODE_RE.fullmatch(stripped)
+        if recipe_code or omen_code:
             flush()
-            current_code = stripped
+            if recipe_code:
+                current_code = f"{recipe_prefix_by_subsection[section.subsection]}{stripped}"
+            else:
+                current_code = stripped
             current_lines = []
         elif current_code:
             current_lines.append(stripped)
@@ -501,6 +527,15 @@ def apply_erratum_to_text(text: str, erratum: Erratum) -> tuple[str, bool, str]:
         if replacement:
             return replacement, True, "Replaced full entry text with errata text."
 
+    flavor_read = re.search(r"flavor text should read:?\s+\"([^\"]+)\"", body, re.I | re.S)
+    if flavor_read:
+        replacement = flavor_read.group(1).strip()
+        mechanics = re.search(r"\n(You may immediately recombine|Discard|Gain|Return|If |When )", text)
+        if mechanics:
+            updated = replacement + text[mechanics.start() :]
+            return updated, True, "Replaced recipe flavor text."
+        return replacement, True, "Replaced recipe flavor text."
+
     option_read = re.search(r'The\s+"?([A-Z])\)?"?\s+option should read:?\s+"([^"]+)"', body, re.I | re.S)
     if option_read:
         updated, ok = replace_option_block(text, option_read.group(1).upper(), option_read.group(2))
@@ -562,6 +597,14 @@ def apply_errata(records: list[Record], errata: list[Erratum]) -> list[dict[str,
     log: list[dict[str, object]] = []
 
     for erratum in errata:
+        if erratum.target == "Table of Contents":
+            log.append(log_row(erratum, None, "applied", True, "Applied by corrected TOC range configuration."))
+            continue
+        relabelled = apply_relabel_erratum(erratum, by_key)
+        if relabelled:
+            record, summary = relabelled
+            log.append(log_row(erratum, record, "applied", True, summary))
+            continue
         keys = target_keys(erratum)
         matched = [by_key[key] for key in keys if key in by_key]
         if not matched and "An entry should exist" in erratum.body:
@@ -588,6 +631,55 @@ def apply_errata(records: list[Record], errata: list[Erratum]) -> list[dict[str,
             log.append(log_row(erratum, record, "applied" if applied else "manual_review", applied, summary))
 
     return log
+
+
+def apply_relabel_erratum(erratum: Erratum, by_key: dict[str, Record]) -> tuple[Record, str] | None:
+    label = re.search(r'entry labelled\s+"([^"]+)"\s+should instead be labelled\s+"([^"]+)"', erratum.body, re.I | re.S)
+    if not label:
+        return None
+
+    old_label = label.group(1).strip()
+    new_label = label.group(2).strip()
+    target = erratum.target.strip()
+    old_keys: list[str] = []
+    new_key = ""
+
+    omen = re.fullmatch(r"(Cloud|Comet|Moon|Star|Sun)\s+([A-Z]{1,3}\d{2}[a-z]?)", target, re.I)
+    if omen:
+        subsection = omen.group(1).upper()
+        old_keys.append(slugify(f"OMENS-{subsection}-{old_label}"))
+        new_key = slugify(f"OMENS-{subsection}-{new_label}")
+    elif re.fullmatch(r"[YRBPSON]\d{4}", target):
+        color_by_prefix = {
+            "Y": "YELLOW",
+            "R": "RED",
+            "B": "BLUE",
+            "P": "PURPLE",
+            "S": "SILVER",
+            "O": "ORANGE",
+        }
+        color = color_by_prefix.get(target[0], "")
+        old_keys.append(slugify(f"RECIPES-{color}-{old_label}"))
+        new_key = slugify(f"RECIPES-{color}-{new_label}")
+
+    for old_key in old_keys:
+        record = by_key.get(old_key)
+        if not record:
+            continue
+        if new_key in by_key and by_key[new_key] is not record:
+            return None
+        del by_key[old_key]
+        record.stable_key = new_key
+        record.source_id_or_name = new_label
+        record.errata_applied = True
+        record.errata_source = append_field(record.errata_source, erratum.target)
+        record.errata_version_or_date = append_field(record.errata_version_or_date, erratum.version)
+        summary = f"Relabelled {old_label} as {new_label}."
+        record.change_summary = append_field(record.change_summary, summary)
+        by_key[new_key] = record
+        return record, summary
+
+    return None
 
 
 def append_field(existing: str, addition: str) -> str:
