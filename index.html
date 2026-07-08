@@ -56,7 +56,10 @@
 
   <!-- CAVE WALL -->
   <div class="tab-panel" id="tab-cave-wall">
-    <div class="controls"><button class="btn btn-primary" onclick="openCaveEditor()">+ Add Drawing</button></div>
+    <div class="controls">
+      <button class="btn btn-primary" onclick="openCaveEditor()">+ Add Drawing</button>
+      <button class="btn" id="cave-sort" onclick="toggleCaveWallSort()" title="Switch between creation order and alphabetical"></button>
+    </div>
     <div class="cave-grid" id="cave-wall-list"></div>
   </div>
 
@@ -67,6 +70,7 @@
       <button class="subtab-btn" data-sub="behemoths" onclick="switchJournalTab('behemoths')">Behemoths</button>
       <button class="subtab-btn" data-sub="challenges" onclick="switchJournalTab('challenges')">Challenges</button>
       <button class="subtab-btn" data-sub="investigations" onclick="switchJournalTab('investigations')">Investigations</button>
+      <button class="subtab-btn" data-sub="codex" onclick="switchJournalTab('codex')">Codex</button>
       <button class="subtab-btn" data-sub="notes" onclick="switchJournalTab('notes')">Notes</button>
     </div>
 
@@ -97,6 +101,12 @@
     <div class="subtab-panel" id="tab-investigations">
       <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('investigation')">+ Add Investigation</button></div>
       <div class="journal-grid" id="investigations-list"></div>
+    </div>
+
+    <!-- CODEX ENTRIES READ -->
+    <div class="subtab-panel" id="tab-codex">
+      <div class="controls"><button class="btn btn-primary" onclick="openJournalEntry('codex')">+ Add Codex Entry</button></div>
+      <div class="journal-grid" id="codex-list"></div>
     </div>
 
     <!-- NOTES -->
@@ -360,7 +370,8 @@
 
     <div class="help-section">
       <h3>Journal tab</h3>
-      <p>The <strong>Journal</strong> tab gathers the campaign record into sub-tabs. <strong>Culture</strong> — tribe name, structures, mantle powers, knowledge cards, taboos, pigments. <strong>Behemoths</strong> — each with lair hex, demeanor, and revealed secrets. <strong>Challenges</strong> — record grouped by epoch, newest first. <strong>Looming</strong> — upcoming challenges in priority order (reorder with ▲▼). <strong>Investigations</strong> — omens and findings. <strong>Notes</strong> — free-form named pages. The <strong>Cave Wall</strong> tab draws pictographic records with a finger, stylus, or Apple Pencil using the six pencils from the game box. Everything is saved locally, included in Export JSON, and merged through Drive Sync like recipes.</p>
+      <p>The <strong>Journal</strong> tab gathers the campaign record into sub-tabs. <strong>Culture</strong> — tribe name, structures, outposts (which structures are built where), mantle powers grouped by mantle, knowledge cards, taboos, pigments. <strong>Behemoths</strong> — each with lair hex, demeanor, and revealed secrets. <strong>Challenges</strong> — record grouped by epoch, newest first. <strong>Looming</strong> — upcoming challenges in priority order (reorder with ▲▼). <strong>Investigations</strong> — omens and findings. <strong>Codex</strong> — which codex entries the group has read, with the card that sent you there and your notes. <strong>Notes</strong> — free-form named pages. The <strong>Cave Wall</strong> tab draws pictographic records with a finger, stylus, or Apple Pencil using the six pencils from the game box; view it in creation or alphabetical order. Everything is saved locally, included in Export JSON, and merged through Drive Sync like recipes.</p>
+      <p>Card IDs can be typed without their prefix — the form fills it in ("13" becomes IT13 on a recipe, "04" becomes KN04 on a knowledge card) and fixes lower-case ("bh03" becomes BH03).</p>
     </div>
 
     <div class="help-section">
