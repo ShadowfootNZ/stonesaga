@@ -6,5 +6,8 @@
   "repoUrl": "https://github.com/ShadowfootNZ/stonesaga",
   "appUrl": "https://apps.shadowfoot.com/stonesaga/",
   "deployDir": ".",
-  "entryPoint": "index.html"
+  "entryPoint": "index.html", 
+  "thumbnailPath": "docs/thumbnail.jpg",
+  "keyImagePath": "docs/Journal.webp",
+  "imagePaths": ["Add material.webp", "Cave wall.webp", "Crafting 2.webp", "Record recipe.webp"]
 }
