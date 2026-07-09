@@ -7,7 +7,7 @@
   "appUrl": "https://apps.shadowfoot.com/stonesaga/",
   "deployDir": ".",
   "entryPoint": "index.html", 
-  "thumbnailPath": "docs/thumbnail.jpg",
+  "thumbnailPath": "docs/thumbnail.webp",
   "keyImagePath": "docs/Journal.webp",
-  "imagePaths": ["Add material.webp", "Cave wall.webp", "Crafting 2.webp", "Record recipe.webp"]
+  "imagePaths": ["docs/Add material.webp", "docs/Cave wall.webp", "docs/Crafting 2.webp", "docs/Record recipe.webp"]
 }
