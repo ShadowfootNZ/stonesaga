@@ -9,5 +9,5 @@
   "entryPoint": "index.html", 
   "thumbnailPath": "docs/thumbnail.webp",
   "keyImagePath": "docs/Journal.webp",
-  "imagePaths": ["docs/Add material.webp", "docs/Cave wall.webp", "docs/Crafting 2.webp", "docs/Record recipe.webp"]
+  "imagePaths": ["docs/Crafting 2.webp", "docs/Add material.webp", "docs/Record recipe.webp", "docs/Cave wall.webp"]
 }
