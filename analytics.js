@@ -3,8 +3,6 @@
  *
  * Either inline it just before </body>, or load it as a module:
  *   <script type="module" src="/analytics.js"></script>
- *
- * The only thing you need to change per-page is APP_ID.
  */
 
 (function () {
@@ -23,6 +21,7 @@
     .replace(/\.[^/.]+$/, '')    // strip extension
     .replace(/\/index$/, '')     // strip trailing /index
     .replace(/^index$/, '')      // handle bare index at root
+    .replace(/\/+$/, '')         // strip trailing slash(es)
     || 'root';
   // ────────────────────────────────────────────────────────
 

@@ -6,8 +6,10 @@
   "repoUrl": "https://github.com/ShadowfootNZ/stonesaga",
   "appUrl": "https://apps.shadowfoot.com/stonesaga/",
   "deployDir": ".",
-  "entryPoint": "index.html", 
-  "thumbnailPath": "docs/thumbnail.jpg",
+  "entryPoint": "index.html",
+  "thumbnailPath": "docs/thumbnail.webp",
   "keyImagePath": "docs/Journal.webp",
-  "imagePaths": ["Add material.webp", "Cave wall.webp", "Crafting 2.webp", "Record recipe.webp"]
+  "imagePaths": ["docs/Crafting 2.webp", "docs/Add material.webp", "docs/Record recipe.webp", "docs/Cave wall.webp"],
+  "tags": ["stonesaga", "campaign"],
+  "status": "in testing"
 }
