@@ -44,6 +44,7 @@
 <main>
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('workshop',this)">Workshop</button>
+    <button class="tab-btn" onclick="switchTab('mantle',this)">Mantle</button>
     <button class="tab-btn" onclick="switchTab('journal-group',this)">Journal</button>
     <button class="tab-btn" onclick="switchTab('cave-wall',this)">Cave Wall</button>
     <!-- Deferred tab (see app.js TODO block): Valley Map -->
@@ -53,6 +54,38 @@
        <div class="tab-panel" id="tab-valley-map">
          Hex grid SVG + labelling UI. Background image upload. Hex annotation store.
        </div> -->
+
+  <!-- MANTLE (per-device satchel: material counts for the current session; local only, never synced) -->
+  <div class="tab-panel" id="tab-mantle">
+    <div class="subtabs" id="mantle-subtabs">
+      <button class="subtab-btn active" data-sub="materials" onclick="switchMantleTab('materials')">Materials</button>
+      <button class="subtab-btn" data-sub="craftable" onclick="switchMantleTab('craftable')">Craftable</button>
+      <button class="subtab-btn" data-sub="unknown" onclick="switchMantleTab('unknown')">Unknown</button>
+    </div>
+
+    <!-- MATERIALS (satchel counts) -->
+    <div class="subtab-panel active" id="tab-mantle-materials">
+      <div class="controls">
+        <input class="search-box" type="text" id="mantle-search" placeholder="Search materials…" oninput="renderMantle()">
+        <label class="filter-mode-toggle">
+          <input type="checkbox" id="mantle-held-only" checked onchange="renderMantle()"> Held only
+        </label>
+        <button class="btn" onclick="mantleNewSession()" title="Clear all satchel counts for a new game session">New Session</button>
+      </div>
+      <div class="material-grid" id="mantle-grid"></div>
+    </div>
+
+    <!-- CRAFTABLE (known items makeable from the satchel; display only) -->
+    <div class="subtab-panel" id="tab-mantle-craftable">
+      <div class="recipe-grid" id="mantle-craftable-out"></div>
+    </div>
+
+    <!-- UNKNOWN (untried combinations from the satchel) -->
+    <div class="subtab-panel" id="tab-mantle-unknown">
+      <div id="mantle-token-notice"></div>
+      <div id="mantle-unknown-out"></div>
+    </div>
+  </div>
 
   <!-- CAVE WALL -->
   <div class="tab-panel" id="tab-cave-wall">

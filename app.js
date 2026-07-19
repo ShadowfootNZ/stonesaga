@@ -254,7 +254,7 @@ async function importCodesCsv(event) {
     } catch { summary.push(`${file.name} — could not read file`); }
   }
   save();
-  if (document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+  refreshCraftingViews();
   alert(`Provisional codes imported:\n${summary.join('\n')}`);
 }
 
@@ -509,6 +509,7 @@ function switchTab(id,btn){
   document.getElementById('tab-'+id).classList.add('active');
   btn.classList.add('active');
   if(id==='workshop') switchWorkshopTab(workshopSubtab); // reopen where the crafter left off
+  if(id==='mantle') switchMantleTab(mantleSubtab); // reopen where the player left off
   if(id==='cave-wall') renderCaveWall();
   if(id==='journal-group') switchJournalTab(journalSubtab); // reopen where the reader left off
 }
@@ -523,6 +524,202 @@ function switchWorkshopTab(id){
   document.querySelectorAll('#tab-workshop .subtab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+id));
   document.querySelectorAll('#workshop-subtabs .subtab-btn').forEach(b=>b.classList.toggle('active',b.dataset.sub===id));
   (WORKSHOP_TAB_RENDER[id]||renderTokenNotice)();
+}
+
+// ═══════════════════════════════════════════════════
+// MANTLE (SATCHEL)
+// ═══════════════════════════════════════════════════
+// Per-device material counts for the current game session. Lives in its
+// own localStorage key, outside the synced save — never exported, merged,
+// or pushed to Drive. Keys are norm()'d material names. Base materials
+// only: custom/special items are managed differently at the table.
+const MANTLE_KEY='stonesaga_mantle';
+let mantleCounts=(()=>{try{return JSON.parse(localStorage.getItem(MANTLE_KEY))?.counts||{};}catch{return {};}})();
+
+// Materials / Craftable / Unknown live as sub-tabs under Mantle, mirroring
+// the Workshop and Journal sub-tab pattern.
+let mantleSubtab='materials';
+const MANTLE_TAB_RENDER={materials:renderMantle,craftable:renderMantleCraftable,unknown:renderMantleUnknown};
+
+function switchMantleTab(id){
+  mantleSubtab=id;
+  document.querySelectorAll('#tab-mantle .subtab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-mantle-'+id));
+  document.querySelectorAll('#mantle-subtabs .subtab-btn').forEach(b=>b.classList.toggle('active',b.dataset.sub===id));
+  (MANTLE_TAB_RENDER[id]||renderMantle)();
+}
+
+// Re-render whichever crafting views are on screen after a recipe or
+// null-code change — the Workshop explorer and/or a Mantle crafting subtab.
+function refreshCraftingViews(){
+  if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+  if(document.getElementById('tab-mantle').classList.contains('active')&&mantleSubtab!=='materials') (MANTLE_TAB_RENDER[mantleSubtab]||renderMantle)();
+}
+
+function saveMantle(){
+  for(const k of Object.keys(mantleCounts)) if(!(mantleCounts[k]>0)) delete mantleCounts[k];
+  try{localStorage.setItem(MANTLE_KEY,JSON.stringify({counts:mantleCounts}));}catch{/* device-local convenience only */}
+}
+
+function mantleAdd(name,delta){
+  const k=norm(name);
+  mantleCounts[k]=Math.max(0,(mantleCounts[k]||0)+delta);
+  saveMantle();
+  renderMantle();
+}
+
+function mantleProcess(name){
+  const k=norm(name);
+  const target=KM[k]?.processed;
+  if(!target||!(mantleCounts[k]>0)) return;
+  mantleCounts[k]--;
+  mantleCounts[norm(target)]=(mantleCounts[norm(target)]||0)+1;
+  saveMantle();
+  renderMantle();
+}
+
+function mantleNewSession(){
+  if(!confirm('Clear all satchel counts and start a new session?')) return;
+  mantleCounts={};
+  saveMantle();
+  renderMantle();
+}
+
+function renderMantle(){
+  const grid=document.getElementById('mantle-grid');
+  if(!grid) return;
+  const q=(document.getElementById('mantle-search')?.value||'').toLowerCase();
+  const heldOnly=!!document.getElementById('mantle-held-only')?.checked;
+  const hasHeld=Object.values(mantleCounts).some(n=>n>0);
+
+  const list=BASE_MATERIALS
+    .filter(m=>(!q||m.name.toLowerCase().includes(q))&&(!heldOnly||mantleCounts[norm(m.name)]>0))
+    .sort((a,b)=>a.name.localeCompare(b.name));
+
+  if(!list.length){
+    grid.innerHTML=`<div class="empty-state"><div class="glyph">◈</div><h2>${hasHeld?'No materials found':'Satchel is empty'}</h2><p>${heldOnly?'Untick “Held only” to browse all materials and add what you acquire.':'Adjust your search, or tap + on a material as you acquire it.'}</p></div>`;
+    return;
+  }
+
+  grid.innerHTML=list.map(m=>{
+    const k=norm(m.name);
+    const count=mantleCounts[k]||0;
+    return `<div class="material-card${count>0?' mantle-held':''}">
+      <div class="material-card-img-wrap">
+        ${m.image
+          ? `<span class="material-card-img-frame"><img src="${esc(m.image)}" alt="" class="material-card-img" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-flex'">${materialMarksPlaceholderHtml(m,'md',true)}</span>`
+          : materialMarksPlaceholderHtml(m,'md')}
+      </div>
+      <div class="material-card-body">
+        <div class="material-card-name-row"><span class="material-tag ${m.cat||'unknown'}">${esc(m.name)}</span></div>
+        <div class="mantle-stepper">
+          <button class="mantle-step-btn" onclick="mantleAdd('${esc(k)}',-1)"${count?'':' disabled'} aria-label="Remove one ${esc(m.name)}">−</button>
+          <span class="mantle-count${count?'':' mantle-count-zero'}">${count}</span>
+          <button class="mantle-step-btn" onclick="mantleAdd('${esc(k)}',1)" aria-label="Add one ${esc(m.name)}">+</button>
+        </div>
+        ${m.processed&&count>0?`<button class="btn btn-sm mantle-process-btn" onclick="mantleProcess('${esc(k)}')" title="Convert one ${esc(m.name)} into ${esc(m.processed)}">⚒ Process → ${esc(m.processed)}</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Unordered pairs of held materials (both counts ≥ 1; a material with itself
+// needs 2 copies), using canonical KM names and oriented by the same
+// left-token rule as the explorer. No variant expansion — you hold what you
+// hold. A satchel is small, so fanning out across every pair stays readable.
+function mantleHeldPairs(){
+  const held=Object.keys(mantleCounts)
+    .filter(k=>mantleCounts[k]>0)
+    .map(k=>KM[k]?.name)
+    .filter(n=>n&&canCraft(n))
+    .sort((x,y)=>x.localeCompare(y));
+  const pairs=[];
+  for(let i=0;i<held.length;i++){
+    for(let j=i;j<held.length;j++){
+      const a=held[i],b=held[j];
+      if(i===j&&mantleCounts[norm(a)]<2) continue;
+      if(canBeLeft(a)) pairs.push([a,b]);
+      else if(canBeLeft(b)) pairs.push([b,a]);
+    }
+  }
+  return pairs;
+}
+
+// CRAFTABLE — known recipes whose pair is fully held. Display only: no
+// craft/consume action here (decided 2026-07-19); players adjust counts on
+// the Materials subtab.
+function renderMantleCraftable(){
+  const out=document.getElementById('mantle-craftable-out');
+  if(!out) return;
+  const pairs=mantleHeldPairs();
+  const items=[];
+  for(const r of live(recipes)){
+    const matched=pairs.filter(([a,b])=>recipeUsesPair(r,a,b));
+    if(matched.length) items.push({r,matched});
+  }
+  items.sort((x,y)=>x.r.name.localeCompare(y.r.name));
+  if(!items.length){
+    out.innerHTML=`<div class="empty-state"><div class="glyph">◈</div><h2>Nothing craftable from your satchel yet</h2><p>Add the materials you hold on the Materials subtab — known items you can make appear here.</p></div>`;
+    return;
+  }
+  out.innerHTML=items.map(({r,matched})=>{
+    const pairHtml=matched.map(([a,b])=>
+      `<div class="recipe-materials">
+        <span class="material-tag ${catFor(a)}">${esc(a)}</span>
+        <span style="color:var(--flint)">+</span>
+        <span class="material-tag ${catFor(b)}">${esc(b)}</span>
+      </div>`).join('');
+    return `<div class="recipe-card">
+      <div class="recipe-card-header">
+        <div class="recipe-name">${esc(r.name)}</div>
+        ${r.id?`<div class="item-number">${esc(r.id)}</div>`:''}
+      </div>
+      ${pairHtml}
+      ${r.notes?`<div class="recipe-notes">${esc(r.notes)}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// UNKNOWN — untried combinations from the satchel, behaving exactly like the
+// Workshop explorer's Unknown view (same combo cards, Record discovery and
+// Nothing actions). Record discovery routes through mantleRecordDiscovery so
+// a saved discovery spends the satchel materials.
+function renderMantleUnknown(){
+  const out=document.getElementById('mantle-unknown-out');
+  if(!out) return;
+  const notice=document.getElementById('mantle-token-notice');
+  if(notice){
+    notice.className=Object.keys(tokenData).length?'':'token-data-notice warn';
+    notice.textContent=Object.keys(tokenData).length?'':'No token pip data loaded. Load a token data JSON (Workshop → Crafting) to see computed codes; without it, codes must be entered manually.';
+  }
+  const pairs=mantleHeldPairs();
+  if(!pairs.length){
+    out.innerHTML=`<div class="empty-state"><div class="glyph">◈</div><h2>Satchel is empty</h2><p>Add the materials you hold on the Materials subtab — untried combinations appear here.</p></div>`;
+    return;
+  }
+  const liveRecipes=live(recipes);
+  const codeOwner={};
+  for(const r of liveRecipes) for(const c of (r.codes||[])) codeOwner[codeKey(c.color,c.digits)]=r;
+  let html='';
+  for(const [a,b] of pairs) html+=comboSectionHtml(a,b,'unknown',liveRecipes,codeOwner,'mantleRecordDiscovery');
+  out.innerHTML=html||`<div class="empty-state"><div class="glyph">◈</div><h2>No untried combinations</h2><p>Every combination of your held materials is already discovered or marked as nothing.</p></div>`;
+}
+
+// Discovery consumption — the only place satchel counts are spent
+// automatically. Saving a discovery started from the Unknown subtab removes
+// one of each pair material (two copies of the same material for a
+// self-pair), keyed off the pair card tapped, not the modal's editable
+// fields. Recording Nothing never consumes: the game usually returns the
+// materials on a failed attempt (decided 2026-07-19).
+let mantlePendingConsume=null; // {a,b} armed while the record modal is open for a satchel pair
+
+function mantleRecordDiscovery(a,b,color,digits){
+  mantlePendingConsume={a,b};
+  openModalForPair(a,b,color,digits);
+}
+
+function mantleConsumePair(a,b){
+  for(const k of [norm(a),norm(b)]) mantleCounts[k]=Math.max(0,(mantleCounts[k]||0)-1);
+  saveMantle();
 }
 
 // Culture / Behemoths / Challenges / Looming / Investigations / Notes live as
@@ -722,7 +919,8 @@ function canBeLeft(name){
 }
 
 // Fill both Explorer selects with craftable materials, grouped by category.
-// Material A additionally requires canBeLeft. Called from rebuildMaterials()
+// Right-slot-only materials (e.g. Feather) are included in Material A too —
+// renderExplorer flips them to the right side. Called from rebuildMaterials()
 // so custom materials appear automatically.
 function populateExplorerSelects(){
   const s1=document.getElementById('ex-mat1'), s2=document.getElementById('ex-mat2');
@@ -738,7 +936,7 @@ function populateExplorerSelects(){
   };
   const craftable=KNOWN_MATERIALS.filter(m=>canCraft(m.name)).map(m=>m.name);
   const v1=s1.value, v2=s2.value; // keep current picks if still valid
-  s1.innerHTML='<option value="">— choose material —</option>'+optsFor(craftable.filter(canBeLeft));
+  s1.innerHTML='<option value="">— choose material —</option>'+optsFor(craftable);
   s2.innerHTML='<option value="">All materials</option>'+optsFor(craftable);
   s1.value=v1; s2.value=v2;
 }
@@ -751,8 +949,7 @@ function renderExplorer(){
 
   // Expand each input to include unprocessed/processed variant,
   // then filter to only materials that actually have pip marks.
-  // Material A must also be able to sit on the left (non-null inner edge).
-  const aSet=[...new Set(withVariant(mat1).filter(n=>canCraft(n)&&canBeLeft(n)))];
+  const aSet=[...new Set(withVariant(mat1).filter(canCraft))];
   if(!aSet.length){
     out.innerHTML='<p style="color:var(--flint);font-style:italic">That material has no pip marks and cannot be used in crafting combinations.</p>';
     return;
@@ -763,12 +960,19 @@ function renderExplorer(){
 
   // Build ordered pairs, including a material with itself — the table can hold
   // two tokens of the same material, and independent rotations yield valid codes.
+  // The left token needs a non-null inner edge (canBeLeft); a right-slot-only
+  // Material A (e.g. Feather) is flipped to the right of each valid partner,
+  // so "what combines with a Feather?" still fans out across the catalogue.
   const seen=new Set();
   const pairs=[];
+  const addPair=(l,r)=>{
+    const key=`${norm(l)}|${norm(r)}`;
+    if(!seen.has(key)){seen.add(key);pairs.push([l,r]);}
+  };
   for(const a of aSet){
     for(const b of bSet){
-      const fwd=`${norm(a)}|${norm(b)}`;
-      if(!seen.has(fwd)){seen.add(fwd);pairs.push([a,b]);}
+      if(canBeLeft(a)) addPair(a,b);
+      else if(canBeLeft(b)) addPair(b,a);
     }
   }
 
@@ -780,41 +984,50 @@ function renderExplorer(){
   for(const r of liveRecipes) for(const c of (r.codes||[])) codeOwner[codeKey(c.color,c.digits)]=r;
 
   let html='';
-  for(const [a,b] of pairs){
-    const computedCodes=computeCodes(a,b); // null if no token data for either
-    // Apply filter before building HTML
-    const hasKnown=liveRecipes.some(r=>recipeUsesPair(r,a,b));
-    if(explorerFilter==='known'&&!hasKnown) continue;
-    if(explorerFilter==='unknown'&&hasKnown) continue;
-    const hasTokenData=computedCodes!==null;
+  for(const [a,b] of pairs) html+=comboSectionHtml(a,b,explorerFilter,liveRecipes,codeOwner,'openModalForPair');
+  out.innerHTML=html;
+}
 
-    // Recipes crafted with this pair (primary or alternate; order-insensitive)
-    const matchingRecipes=liveRecipes.filter(r=>recipeUsesPair(r,a,b));
-    const discoveredKeys=new Set(matchingRecipes.flatMap(r=>(r.codes||[]).map(c=>codeKey(c.color,c.digits))));
+// One material pair's combo section — shared by the Workshop explorer and the
+// Mantle Unknown subtab. filter: 'all' | 'known' | 'unknown'. recordFn: name
+// of the global function wired into the Record discovery buttons (the Mantle
+// variant arms satchel consumption before opening the same modal). Returns ''
+// when the filter or content rules skip the pair.
+function comboSectionHtml(a,b,filter,liveRecipes,codeOwner,recordFn){
+  const computedCodes=computeCodes(a,b); // null if no token data for either
+  // Apply filter before building HTML
+  const hasKnown=liveRecipes.some(r=>recipeUsesPair(r,a,b));
+  if(filter==='known'&&!hasKnown) return '';
+  if(filter==='unknown'&&hasKnown) return '';
+  const hasTokenData=computedCodes!==null;
 
-    // Null codes for this pair (order-insensitive)
-    const nullForPair=Object.entries(nullCodes)
-      .filter(([,v])=>{
-        if(!v||v.deleted||!v.mat1||!v.mat2) return false;
-        const m1=norm(v.mat1),m2=norm(v.mat2);
-        return (m1===norm(a)&&m2===norm(b))||(m1===norm(b)&&m2===norm(a));
-      })
-      .map(([k])=>k)
-      .filter(k=>!discoveredKeys.has(k));
+  // Recipes crafted with this pair (primary or alternate; order-insensitive)
+  const matchingRecipes=liveRecipes.filter(r=>recipeUsesPair(r,a,b));
+  const discoveredKeys=new Set(matchingRecipes.flatMap(r=>(r.codes||[]).map(c=>codeKey(c.color,c.digits))));
 
-    // Computed codes not yet discovered or marked nothing
-    const nullKeySet=new Set(nullForPair);
-    const unknownComputed=hasTokenData
-      ? computedCodes.filter(c=>{const k=codeKey(c.color,c.digits);return!discoveredKeys.has(k)&&!nullKeySet.has(k);})
-      : [];
+  // Null codes for this pair (order-insensitive)
+  const nullForPair=Object.entries(nullCodes)
+    .filter(([,v])=>{
+      if(!v||v.deleted||!v.mat1||!v.mat2) return false;
+      const m1=norm(v.mat1),m2=norm(v.mat2);
+      return (m1===norm(a)&&m2===norm(b))||(m1===norm(b)&&m2===norm(a));
+    })
+    .map(([k])=>k)
+    .filter(k=>!discoveredKeys.has(k));
 
-    // Skip section entirely when all computed codes are accounted for and nothing to show
-    const showNothing=explorerFilter!=='known';
-    const hasContent=matchingRecipes.length||(showNothing&&(nullForPair.length||unknownComputed.length||!hasTokenData));
-    if(!hasContent) continue;
+  // Computed codes not yet discovered or marked nothing
+  const nullKeySet=new Set(nullForPair);
+  const unknownComputed=hasTokenData
+    ? computedCodes.filter(c=>{const k=codeKey(c.color,c.digits);return!discoveredKeys.has(k)&&!nullKeySet.has(k);})
+    : [];
 
-    const catA=catFor(a),catB=catFor(b);
-    let sec=`<div class="combo-section">
+  // Skip section entirely when all computed codes are accounted for and nothing to show
+  const showNothing=filter!=='known';
+  const hasContent=matchingRecipes.length||(showNothing&&(nullForPair.length||unknownComputed.length||!hasTokenData));
+  if(!hasContent) return '';
+
+  const catA=catFor(a),catB=catFor(b);
+  let sec=`<div class="combo-section">
       <div class="combo-section-header">
         <div class="combo-header-mat"><span class="material-tag ${catA}">${esc(a)}</span></div>
         <span class="combo-header-sep">×</span>
@@ -917,7 +1130,7 @@ function renderExplorer(){
           <span class="status-badge unknown">Unknown</span>
         </div>
         <div class="combo-actions">
-          <button class="btn btn-sm btn-primary" onclick="openModalForPair('${esc(a)}','${esc(b)}','${esc(c.color)}','${esc(c.digits)}')">Record discovery</button>
+          <button class="btn btn-sm btn-primary" onclick="${recordFn}('${esc(a)}','${esc(b)}','${esc(c.color)}','${esc(c.digits)}')">Record discovery</button>
           <button class="btn btn-sm" onclick="openStatusModal(null,'${esc(a)}','${esc(b)}','${esc(k)}',true)">Nothing</button>
         </div>
       </div>`;
@@ -929,16 +1142,14 @@ function renderExplorer(){
         <div class="combo-header"><span class="status-badge unknown">Unknown</span></div>
         <div style="font-size:.8rem;color:var(--flint);font-style:italic;margin-bottom:.4rem">No pip data — enter codes manually</div>
         <div class="combo-actions">
-          <button class="btn btn-sm btn-primary" onclick="openModalForPair('${esc(a)}','${esc(b)}')">Record discovery</button>
+          <button class="btn btn-sm btn-primary" onclick="${recordFn}('${esc(a)}','${esc(b)}')">Record discovery</button>
           <button class="btn btn-sm" onclick="openStatusModal(null,'${esc(a)}','${esc(b)}')">Mark tried — nothing</button>
         </div>
       </div>`;
     }
 
-    sec+=`</div></div>`;
-    html+=sec;
-  }
-  out.innerHTML=html;
+  sec+=`</div></div>`;
+  return sec;
 }
 
 // ═══════════════════════════════════════════════════
@@ -1000,7 +1211,7 @@ function openStatusModal(unused, mat1, mat2, existingKey, directNothing) {
   if (directNothing && existingKey) {
     // immediate save when clicking Nothing on a known computed code
     nullCodes[existingKey] = { mat1, mat2, updatedAt: Date.now() };
-    save(); updateStats(); renderExplorer();
+    save(); updateStats(); refreshCraftingViews();
     document.getElementById('status-overlay').classList.add('hidden');
   }
 }
@@ -1011,7 +1222,7 @@ function removeNullCode(key) {
   save(); updateStats();
   // re-render the existing list in-place
   openStatusModal(null, smState.mat1, smState.mat2);
-  if (document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+  refreshCraftingViews();
 }
 
 function setCodeStatus(status) {
@@ -1027,7 +1238,7 @@ function setCodeStatus(status) {
     nullCodes[codeKey(c.color, c.digits)] = { mat1: smState.mat1, mat2: smState.mat2, updatedAt: Date.now() };
   }
   save(); updateStats();
-  if (document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+  refreshCraftingViews();
   closeStatusModal();
 }
 
@@ -1131,7 +1342,7 @@ function offerPairToClashingRecipe(clash,mat1,mat2,key){
   if(!confirm(`${key} is already recorded for "${clash.name}" (${clash.mat1Name||'?'} + ${clash.mat2Name||'?'}).\n\nAdd ${mat1} + ${mat2} as another material combination for "${clash.name}"?`)) return false;
   attachPairToRecipe(clash,mat1,mat2);
   save(); renderJournal();
-  if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+  refreshCraftingViews();
   return true;
 }
 
@@ -1165,7 +1376,7 @@ function inferCombinations(){
   }
   if(added){
     save(); renderJournal();
-    if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+    refreshCraftingViews();
   }
   alert(added
     ? `Inferred ${added} additional combination(s) across ${touched.size} recipe(s). They're marked "inferred" on the recipe cards until crafted at the table.`
@@ -1178,12 +1389,12 @@ function removeAltPair(id,i){
   r.altPairs.splice(i,1);
   r.updatedAt=Date.now(); // removal wins merges against copies that still have the pair
   save(); renderJournal();
-  if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+  refreshCraftingViews();
   showUndoToast(`Removed ${p.mat1Name} + ${p.mat2Name} from "${r.name}"`,()=>{
     r.altPairs.splice(Math.min(i,r.altPairs.length),0,p);
     r.updatedAt=Date.now();
     save(); renderJournal();
-    if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+    refreshCraftingViews();
   });
 }
 
@@ -1255,7 +1466,7 @@ function _openNewRecipeForPair(mat1,mat2,prefillColor,prefillDigits,extra){
   if(prefillCode){pendingCodes.push({color:prefillColor,digits:prefillDigits});renderCodeList();}
 }
 
-function closeModal(){document.getElementById('modal-overlay').classList.add('hidden');}
+function closeModal(){document.getElementById('modal-overlay').classList.add('hidden');mantlePendingConsume=null;}
 function outsideClose(e,id){if(e.target===document.getElementById(id)) document.getElementById(id).classList.add('hidden');}
 
 function saveRecipe(){
@@ -1291,8 +1502,13 @@ function saveRecipe(){
     const k=codeKey(c.color,c.digits), p=provisionalCodes[k];
     if(p&&!p.deleted) provisionalCodes[k]={...p,deleted:true,updatedAt:Date.now()};
   }
+  // Discovery from the Mantle Unknown subtab: spend the satchel materials.
+  // recipeUsesPair guards against stale pending state from an abandoned modal.
+  if(mantlePendingConsume&&recipeUsesPair(recipe,mantlePendingConsume.a,mantlePendingConsume.b))
+    mantleConsumePair(mantlePendingConsume.a,mantlePendingConsume.b);
+  mantlePendingConsume=null;
   save(); renderJournal(); closeModal();
-  if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+  refreshCraftingViews();
 }
 
 function editRecipe(id){
@@ -1303,7 +1519,7 @@ function deleteRecipe(id){
   if(!r) return;
   r.deleted=true; r.updatedAt=Date.now();
   save(); renderJournal();
-  if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+  refreshCraftingViews();
   showUndoToast(`Deleted "${r.name}"`,()=>restoreRecipe(id));
 }
 function restoreRecipe(id){
@@ -1311,7 +1527,7 @@ function restoreRecipe(id){
   if(!r) return;
   delete r.deleted; r.updatedAt=Date.now(); // the restore must also win merges
   save(); renderJournal();
-  if(document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+  refreshCraftingViews();
 }
 function clearJournalFilters(){
   document.getElementById('search').value='';
@@ -1861,7 +2077,7 @@ function doImport(mode) {
   rebuildMaterials();
   save(); renderJournal();
   closeImportModal();
-  if (document.getElementById('tab-explorer').classList.contains('active')) renderExplorer();
+  refreshCraftingViews();
   if (drivePostImport) {
     drivePostImport = false;
     _pushToDrive().catch(err => alert(`Push to Drive failed: ${err.message}`));

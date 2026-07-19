@@ -390,6 +390,21 @@ body.cave-editor-open{overflow:hidden;}
 .custom-badge{font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ochre);border:1px solid var(--ochre);padding:.05rem .28rem;font-family:'Cinzel',serif;white-space:nowrap;}
 .mat-tab-controls{display:flex;gap:.7rem;align-items:center;flex-wrap:wrap;margin-bottom:1.2rem;}
 .mat-tab-controls .search-box{flex:1;min-width:140px;}
+
+/* Mantle (satchel) — phone-first steppers, large tap targets.
+   Cards are opaque here, unlike the .72-alpha cards elsewhere — counts must
+   stay readable over the busy background art. */
+#mantle-grid .material-card{background:var(--cave);}
+#mantle-grid .mantle-held{background:var(--discovered-bg);border:2px solid var(--discovered-border);}
+.mantle-held .mantle-count{color:var(--discovered-border);}
+.mantle-stepper{display:flex;align-items:center;gap:.6rem;margin:.4rem 0 .2rem;}
+.mantle-step-btn{min-width:44px;min-height:44px;padding:0;display:inline-flex;align-items:center;justify-content:center;
+  font-size:1.4rem;line-height:1;cursor:pointer;background:rgba(255,255,255,.72);border:1px solid var(--smoke);color:inherit;}
+.mantle-step-btn:not(:disabled):active{background:var(--ochre);color:#fff;}
+.mantle-step-btn:disabled{opacity:.35;cursor:default;}
+.mantle-count{font-size:1.3rem;font-weight:700;min-width:2ch;text-align:center;font-variant-numeric:tabular-nums;}
+.mantle-count-zero{color:var(--flint);font-weight:400;}
+.mantle-process-btn{margin-top:.25rem;white-space:normal;text-align:left;}
 .mat-cat-select{background:#fff;border:1px solid var(--smoke);color:var(--chalk);font-family:'Crimson Pro',serif;font-size:.95rem;padding:.45rem .7rem;outline:none;}
 .mat-cat-select:focus{border-color:var(--ochre);}
 
