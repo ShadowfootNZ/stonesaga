@@ -3072,7 +3072,7 @@ const CULTURE_SORTABLE_SECTIONS=new Set(['structure','outpost']);
 function renderCulture(){
   document.getElementById('culture-tribe').value=culture.tribeName||'';
   // [section, title, entries, row formatter, optional custom list renderer]
-  const idChip=e=>e.cardId?`<span class="recipe-code" style="font-size:.75rem">${esc(e.cardId)}</span> `:'';
+  const idChip=e=>e.cardId?`<span class="card-id">${esc(e.cardId)}</span> `:'';
   const LARGE_BLOCK_THRESHOLD=8;
   const WIDE_BLOCK_THRESHOLD=15;
   const blocks=[
@@ -3081,7 +3081,7 @@ function renderCulture(){
       return `${idChip(e)}<strong>${esc(e.name)}</strong>${names.length?` — ${esc(names.join(', '))}`:' — <em>no structures yet</em>'}${e.notes?`<div class="culture-row-notes">${esc(e.notes)}</div>`:''}`;
     }],
     ['mantle','Mantle Powers',live(culture.mantlePowers),e=>`${idChip(e)}<strong>${esc(e.name)}</strong>${e.description?` — ${esc(e.description)}`:''}`,mantlePowersHtml],
-    ['knowledge','Knowledge Cards',live(culture.knowledgeCards),e=>`${e.cardId?`<span class="recipe-code" style="font-size:.75rem">${esc(e.cardId)}</span> `:''}<strong>${esc(e.name)}</strong>`],
+    ['knowledge','Knowledge Cards',live(culture.knowledgeCards),e=>`${idChip(e)}<strong>${esc(e.name)}</strong>`],
     ['taboo','Taboos',live(culture.taboos),e=>esc(e.text)],
     ['pigment','Pigments',live(culture.pigments),e=>esc(e.name)],
     ['structure','Structures',sortCultureList('structure',live(culture.structures)),e=>`${idChip(e)}<strong>${esc(e.name)}</strong>${e.notes?` — ${esc(e.notes)}`:''}`],
@@ -3104,7 +3104,7 @@ function renderBehemoths(){
   const list=live(behemoths);
   el.innerHTML=(list.length?list.map(e=>`
     <div class="journal-card">
-      <div class="journal-card-title">${e.cardId?`<span class="recipe-code" style="font-size:.75rem">${esc(e.cardId)}</span> `:''}${esc(e.name)}</div>
+      <div class="journal-card-title">${e.cardId?`<span class="card-id">${esc(e.cardId)}</span> `:''}${esc(e.name)}</div>
       ${clampBehemothDemeanor(e.demeanor)!=null?`
         <div class="behemoth-demeanor-row">
           ${behemothDemeanorTrackHtml(e.demeanor)}
@@ -3118,7 +3118,7 @@ function renderBehemoths(){
       ].filter(Boolean).join(' · '))}</div>`:''}
       ${(e.secrets||[]).length?`<div class="journal-card-sub">Revealed secrets</div><ol class="secret-list">${e.secrets.map(s=>{
         const o=secretObj(s);
-        return `<li>${o.cardId?`<span class="recipe-code" style="font-size:.7rem">${esc(o.cardId)}</span> `:''}<strong>${esc(o.name||'')}</strong>${o.description?` — ${esc(o.description)}`:''}</li>`;
+        return `<li>${o.cardId?`<span class="card-id">${esc(o.cardId)}</span> `:''}<strong>${esc(o.name||'')}</strong>${o.description?` — ${esc(o.description)}`:''}</li>`;
       }).join('')}</ol>`:''}
       ${e.notes?`<div class="journal-card-body">${esc(e.notes)}</div>`:''}
       ${journalCardActions('behemoth',e.id)}
@@ -3271,7 +3271,7 @@ function renderCodexEntries(){
     const title=e.title||(ref?codexSnippet(ref.x):'');
     return `
     <div class="journal-card">
-      <div class="journal-card-title">Entry ${esc(e.entry)}${title?` — ${esc(title)}`:''}</div>
+      <div class="journal-card-title">${esc(e.entry)}${title?` — ${esc(title)}`:''}</div>
       ${(e.sourceCategory||e.sourceId)?`<div class="journal-card-sub">Source: ${esc([e.sourceCategory,e.sourceId].filter(Boolean).join(' · '))}</div>`:''}
       ${e.notes?`<div class="journal-card-body">${esc(e.notes)}</div>`:''}
       ${ref?`<details class="codex-read"><summary>Read entry${ref.p?` (p.${esc(String(ref.p))})`:''}</summary><div class="codex-read-text">${esc(ref.x)}</div></details>`:''}

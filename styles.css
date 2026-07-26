@@ -137,6 +137,9 @@ main{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:2rem 1.5
 
 .code-chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.6rem;}
 .recipe-code{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .55rem;background:rgba(0,0,0,.3);border:1px solid var(--smoke);font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.04em;}
+/* Card/tile IDs (Culture + Behemoth lists) are reference numbers, not the
+   point of interest — kept small and muted so the name reads first. */
+.card-id{font-family:'Cinzel',serif;font-size:.72rem;color:var(--flint);letter-spacing:.03em;}
 
 .pip-icon{width:11px;height:11px;flex-shrink:0;display:inline-block;vertical-align:middle;}
 .pip-icon.blue{background:var(--pip-blue);border-radius:50%;}
