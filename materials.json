@@ -1,8 +1,8 @@
 {
-  "_readme": "Stonesaga material reference data. 'base' links a processed material back to its raw form. 'marks' are the 4 edge pips [left, right, top, bottom] — null means no pip on that edge. Images live in assets/images/materials/.",
+  "_readme": "Stonesaga material reference data. 'base' links a processed material back to its raw form. 'marks' are the 4 edge pips [left, right, top, bottom] — null means no pip on that edge. Optional 'processing' on raw materials lists which action(s) turn it into its processed form, from the closed set cut/drill/grind/heat/strike/comet; multiple values are alternatives (any one works). Omitted/null = not yet confirmed from cards. Informational only — the app never gates the Process button on it. Images live in assets/images/materials/.",
 
   "Bone": {
-    "cat": "animal", "base": null, "processed": "Bone (carved)",
+    "cat": "animal", "base": null, "processed": "Bone (carved)", "processing": ["drill", "cut"],
     "image": "assets/images/materials/bone.webp",
     "marks": { "left": "Blue 2", "right": "Yellow 2", "top": "Yellow 3", "bottom": "Red 2" }
   },
@@ -13,7 +13,7 @@
   },
 
   "Hide": {
-    "cat": "animal", "base": null, "processed": "Hide (cured)",
+    "cat": "animal", "base": null, "processed": "Hide (cured)", "processing": ["drill", "cut"],
     "image": "assets/images/materials/hide.webp",
     "marks": null
   },
@@ -35,7 +35,7 @@
   },
 
   "Guts": {
-    "cat": "animal", "base": null, "processed": "Guts (cured)",
+    "cat": "animal", "base": null, "processed": "Guts (cured)", "processing": ["heat", "cut"],
     "image": "assets/images/materials/guts.webp",
     "marks": null
   },
@@ -46,7 +46,7 @@
   },
 
   "Feather": {
-    "cat": "animal", "base": null, "processed": "Feather (cut)",
+    "cat": "animal", "base": null, "processed": "Feather (cut)", "processing": ["cut"],
     "image": "assets/images/materials/feather.webp",
     "marks": { "left": null, "right": "Blue 1", "top": null, "bottom": null }
   },
@@ -156,7 +156,7 @@
   },
 
   "Coral": {
-    "cat": "rare", "base": null, "processed": "Coral (living)",
+    "cat": "rare", "base": null, "processed": "Coral (living)", "processing": ["comet"],
     "image": "assets/images/materials/coral.webp",
     "marks": null
   },

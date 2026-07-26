@@ -124,6 +124,13 @@ let BASE_MATERIALS  = KNOWN_MATERIALS_BUILTIN;
 let KNOWN_MATERIALS = KNOWN_MATERIALS_BUILTIN;
 let KM = Object.fromEntries(KNOWN_MATERIALS.map(m=>[m.name.toLowerCase(),m]));
 
+// Closed set of processing actions (see docs/TODO.md #2). Multiple values on a
+// material are alternatives — any one listed action processes it (OR, never a
+// required combination). Informational only: the app can't know which
+// structures/items make an action available, so the Process button never gates
+// on this.
+const PROCESSING_ACTIONS = ['cut','drill','grind','heat','strike','comet'];
+
 function parseMaterialsJson(data){
   return Object.entries(data)
     .filter(([k])=>k!=='_readme')
@@ -133,7 +140,33 @@ function parseMaterialsJson(data){
       processed: m.processed,
       image: m.image,
       marks: m.marks ? [m.marks.left, m.marks.right, m.marks.top, m.marks.bottom] : null,
+      processing: m.processing || null,
     }));
+}
+
+// "heat" / "cut or heat" — the OR is the semantics, not just punctuation.
+function processingHint(m){
+  const list=(m?.processing||[]).filter(a=>PROCESSING_ACTIONS.includes(a));
+  return list.length?list.join(' or '):null;
+}
+
+// Hand-drawn stand-ins for the rulebook's processing glyphs (the originals
+// aren't extractable). currentColor so surrounding text colours them.
+const PROCESSING_ICONS = {
+  cut:    '<path d="M3.5 19.5 L16 4 l3.5 3.5 c-3.5 6-8.5 9.5-15 12.5 Z"/>',
+  drill:  '<path d="M9 3.5 h6 l-1.1 3.5 h-3.8 Z M10.3 8.5 h3.4 l-1 3.5 h-1.4 Z M11.4 13.5 h1.2 L12 20.5 Z"/><path d="M6.5 3 q-1.5 1.5 0 3 M17.5 3 q1.5 1.5 0 3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>',
+  grind:  '<path d="M9 4.5 q5-2.5 8.5 .5 q2.8 2.3 1.8 5.8 q-1 3.7-5.8 3.7 q-5.6 0-6.8-3.7 q-1-3.7 2.3-6.3 Z"/><path d="M4 17.5 l4-2 M3.5 20.5 l4.5-2 M8 21.5 l3.5-1.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+  heat:   '<path fill-rule="evenodd" d="M13.5 1.5 C11 4.5 8.5 6.5 7 9.5 C5.9 11.8 5.5 13.3 5.5 15 a6.5 6.5 0 0 0 13 0 c0-2.4-.9-4.4-2.1-6.7 C15 5.8 13.8 4 13.5 1.5 Z M12 9.5 c1.5 2.3 3 3.7 3 5.8 a3 3 0 0 1-6 0 c0-2.1 1.5-3.5 3-5.8 Z"/>',
+  strike: '<path d="M4 8.5 q-.3-4 4.5-4.5 q4.3-.4 4.5 3.5 q.2 3.2-3.8 4.2 q-4.9 .8-5.2-3.2 Z M12 16.5 q-.2-3.2 3.8-3.5 q4-.3 4.2 3 q.2 3.7-3.6 4.2 q-4.2 .5-4.4-3.7 Z"/><path d="M14.5 5.5 l2.5-2 M16 9 l3.5-1 M10.5 12 l2 2.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
+  comet:  '<circle cx="7.5" cy="16.5" r="4.5"/><path d="M11 12.5 L21.5 2.5 M13.5 15 L22.5 8 M8.5 11 L15.5 3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+};
+
+// Icon + word per action, joined by "or": the icons alone are new to players.
+function processingChipsHtml(m){
+  const list=(m?.processing||[]).filter(a=>PROCESSING_ACTIONS.includes(a));
+  return list.map(a=>
+    `<span class="proc-chip">${PROCESSING_ICONS[a]?`<svg class="proc-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${PROCESSING_ICONS[a]}</svg>`:''}${esc(a)}</span>`
+  ).join('<span class="proc-or">or</span>');
 }
 
 function rebuildMaterials() {
@@ -142,7 +175,7 @@ function rebuildMaterials() {
     ...BASE_MATERIALS,
     ...customMaterials
       .filter(c => !c.deleted && !baseNames.has(norm(c.name)))
-      .map(c => ({name:c.name, cat:c.cat||'unknown', processed:c.processed||null, image:c.image||null, marks:c.marks||null, notes:c.notes||null}))
+      .map(c => ({name:c.name, cat:c.cat||'unknown', processed:c.processed||null, image:c.image||null, marks:c.marks||null, notes:c.notes||null, processing:c.processing||null}))
   ];
   KM = Object.fromEntries(KNOWN_MATERIALS.map(m => [m.name.toLowerCase(), m]));
   populateExplorerSelects();
@@ -560,6 +593,67 @@ function saveMantle(){
   try{localStorage.setItem(MANTLE_KEY,JSON.stringify({counts:mantleCounts}));}catch{/* device-local convenience only */}
 }
 
+// ═══════════════════════════════════════════════════
+// CODEX REFERENCE TEXT (device-local)
+// ═══════════════════════════════════════════════════
+// Optional lookup of the codex OUTCOMES text, keyed by entry number
+// ("028" → {p: page, x: full text}). Loaded from a local file, stored in its
+// own localStorage key. NEVER exported, synced, or merged — copyrighted game
+// text stays on this device; only short derived titles enter shared data.
+const CODEX_REF_KEY='stonesaga_codex_ref';
+let codexRef={};
+
+function loadCodexRef(){
+  try{codexRef=JSON.parse(localStorage.getItem(CODEX_REF_KEY))||{};}catch{codexRef={};}
+}
+
+function codexRefFor(entry){
+  const e=String(entry||'').trim();
+  if(!e) return null;
+  if(codexRef[e]) return codexRef[e];
+  const n=parseInt(e,10); // "28" and "028" are the same entry
+  return Number.isFinite(n)?(codexRef[String(n).padStart(3,'0')]||null):null;
+}
+
+// First sentence of the entry text, clipped to ~70 chars — used as a derived
+// display title ("Cold rays of sunlight linger on rattling leaves…").
+function codexSnippet(x){
+  const first=(x||'').split('\n')[0].trim();
+  const m=first.match(/^.{0,68}[.!?…](?=["')\]]?(\s|$))/);
+  if(m) return m[0];
+  if(first.length<=70) return first;
+  return first.slice(0,70).replace(/\s+\S*$/,'')+'…';
+}
+
+// Accepts either the full corrected-codex JSON (array of rows — trimmed here
+// to OUTCOMES only) or an already-trimmed {entry: {p,x}} object.
+function importCodexRef(event){
+  const file=event.target.files[0];
+  event.target.value='';
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const d=JSON.parse(e.target.result);
+      const entries={};
+      if(Array.isArray(d)){
+        for(const r of d) if(r.section==='OUTCOMES'&&r.source_id_or_name)
+          entries[String(r.source_id_or_name)]={p:r.page_start||null,x:r.corrected_text||r.original_text||''};
+      }else if(d&&typeof d==='object'){
+        for(const [k,v] of Object.entries(d)) if(v&&typeof v.x==='string') entries[k]=v;
+      }
+      const n=Object.keys(entries).length;
+      if(!n){alert('No codex outcome entries found in that file.');return;}
+      codexRef=entries;
+      try{localStorage.setItem(CODEX_REF_KEY,JSON.stringify(codexRef));}
+      catch{alert('Codex text loaded for this visit, but the browser could not store it (storage full?) — it will be gone after a reload.');}
+      renderCodexEntries();
+      alert(`Codex text loaded for ${n} entries. It stays on this device only — never synced or exported.`);
+    }catch{alert('Could not parse that file as codex JSON.');}
+  };
+  reader.readAsText(file);
+}
+
 function mantleAdd(name,delta){
   const k=norm(name);
   mantleCounts[k]=Math.max(0,(mantleCounts[k]||0)+delta);
@@ -616,7 +710,8 @@ function renderMantle(){
           <span class="mantle-count${count?'':' mantle-count-zero'}">${count}</span>
           <button class="mantle-step-btn" onclick="mantleAdd('${esc(k)}',1)" aria-label="Add one ${esc(m.name)}">+</button>
         </div>
-        ${m.processed&&count>0?`<button class="btn btn-sm mantle-process-btn" onclick="mantleProcess('${esc(k)}')" title="Convert one ${esc(m.name)} into ${esc(m.processed)}">⚒ Process → ${esc(m.processed)}</button>`:''}
+        ${m.processed&&count>0?`<button class="btn btn-sm mantle-process-btn" onclick="mantleProcess('${esc(k)}')" title="Convert one ${esc(m.name)} into ${esc(m.processed)}${processingHint(m)?` — needs ${esc(processingHint(m))}`:''}">⚒ Process → ${esc(m.processed)}</button>`:''}
+        ${processingHint(m)?`<div class="mantle-process-hint">needs ${processingChipsHtml(m)}</div>`:''}
       </div>
     </div>`;
   }).join('');
@@ -756,6 +851,29 @@ document.addEventListener('click',e=>{
 function updateStats(){
   document.getElementById('stat-total').textContent=live(recipes).length;
   document.getElementById('stat-nothing').textContent=liveKeys(nullCodes).length;
+  document.getElementById('stat-unknown').textContent=Object.keys(tokenData).length?countUnknownCodes():'—';
+}
+
+// Distinct computed codes across every craftable ordered pair (left slot needs
+// a non-null inner edge; a material can pair with itself) that are neither on
+// a recorded recipe nor marked as dead ends — the codes still to try. Counted
+// as distinct codes, not pairs: the codex maps code → result, so two pairs
+// sharing a code are one outcome. Only materials with token pip data pair.
+function countUnknownCodes(){
+  const names=Object.keys(tokenData);
+  const accounted=new Set(liveKeys(nullCodes));
+  for(const r of live(recipes)) for(const c of (r.codes||[])) accounted.add(codeKey(c.color,c.digits));
+  const unknown=new Set();
+  for(const a of names){
+    if(!canBeLeft(a)) continue;
+    for(const b of names){
+      for(const c of computeCodes(a,b)||[]){
+        const k=codeKey(c.color,c.digits);
+        if(!accounted.has(k)) unknown.add(k);
+      }
+    }
+  }
+  return unknown.size;
 }
 
 // ═══════════════════════════════════════════════════
@@ -2208,6 +2326,8 @@ function openAddMaterialModal(nameToEdit) {
   document.getElementById('am-cat-list').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
 
   const m = nameToEdit ? KM[norm(nameToEdit)] : null;
+  document.getElementById('am-processing').innerHTML = PROCESSING_ACTIONS.map(a =>
+    `<label class="am-processing-check"><input type="checkbox" value="${a}"${(m?.processing||[]).includes(a) ? ' checked' : ''}> ${a}</label>`).join('');
   document.getElementById('am-name').value      = m?.name      || '';
   document.getElementById('am-cat').value       = m?.cat       || 'unknown';
   document.getElementById('am-processed').value = m?.processed || '';
@@ -2259,6 +2379,8 @@ function saveCustomMaterial() {
   }
   const hasMarks = marks.some(m => m !== null);
 
+  const processing = [...document.querySelectorAll('#am-processing input:checked')].map(c => c.value);
+
   const entry = {
     name,
     cat:       (document.getElementById('am-cat').value.trim()       || 'unknown'),
@@ -2266,6 +2388,7 @@ function saveCustomMaterial() {
     image:     (document.getElementById('am-image').value.trim()     || null),
     marks:     hasMarks ? marks : null,
     notes:     (document.getElementById('am-notes').value.trim()     || null),
+    processing: processing.length ? processing : null,
     updatedAt: Date.now(), // newest copy wins on sync merges
   };
 
@@ -2336,6 +2459,7 @@ function renderMaterials() {
           ${isCustom ? '<span class="custom-badge">custom</span>' : ''}
         </div>
         ${m.processed ? `<div class="material-card-detail">→ ${esc(m.processed)}</div>` : ''}
+        ${processingHint(m) ? `<div class="material-card-detail material-card-processing">Process: ${processingChipsHtml(m)}</div>` : ''}
         ${markHtml    ? `<div class="material-card-marks">${markHtml}</div>` : ''}
         ${m.notes     ? `<div class="material-card-notes">${esc(m.notes)}</div>` : ''}
         ${isCustom ? `<div class="card-actions">
@@ -2683,6 +2807,16 @@ function openJournalEntry(section, id){
   jeState={section, id:id||null};
   document.getElementById('je-title').textContent=(entry?'Edit ':'Add ')+spec.label;
   document.getElementById('je-fields').innerHTML=jeFieldsHtml(spec, entry);
+  if(section==='codex'){
+    // With local codex text loaded, entering an entry number prefills a blank
+    // title with the derived snippet (editable; saves/syncs like typed text)
+    const ef=document.getElementById('je-f-entry');
+    ef?.addEventListener('change',()=>{
+      const ref=codexRefFor(ef.value);
+      const tf=document.getElementById('je-f-title');
+      if(ref&&tf&&!tf.value.trim()) tf.value=codexSnippet(ref.x);
+    });
+  }
   document.getElementById('je-overlay').classList.remove('hidden');
   document.getElementById('je-f-'+spec.fields[0].key)?.focus();
 }
@@ -2897,13 +3031,52 @@ function outpostStructureNames(e){
     .filter(Boolean);
 }
 
+// View order is a per-device preference, not shared state — own localStorage
+// key per section, outside the synced save (see caveWallSort for the same
+// pattern). Each sortable section can have its own default mode.
+const CULTURE_SORT_MODES=['name','added','id'];
+const CULTURE_SORT_LABELS={name:'Sorted: A–Z',added:'Sorted: oldest first',id:'Sorted: by ID'};
+const CULTURE_SORT_DEFAULTS={structure:'name',outpost:'added'};
+const cultureSortState={};
+function getCultureSort(sec){
+  if(!(sec in cultureSortState)){
+    let v; try{v=localStorage.getItem('stonesaga_'+sec+'_sort');}catch{v=null;}
+    cultureSortState[sec]=v||CULTURE_SORT_DEFAULTS[sec]||'name';
+  }
+  return cultureSortState[sec];
+}
+function toggleCultureSort(sec){
+  const i=CULTURE_SORT_MODES.indexOf(getCultureSort(sec));
+  cultureSortState[sec]=CULTURE_SORT_MODES[(i+1)%CULTURE_SORT_MODES.length];
+  try{localStorage.setItem('stonesaga_'+sec+'_sort',cultureSortState[sec]);}catch{/* view pref only */}
+  renderCulture();
+}
+// Numeric-aware split ("ST02" -> ["ST",2]) so ST10 sorts after ST2.
+function cardIdSortKey(id){
+  const m=(id||'').match(/^(\D*)(\d+)/);
+  return m?[m[1],parseInt(m[2],10)]:[id||'',0];
+}
+function sortCultureList(sec,list){
+  const mode=getCultureSort(sec);
+  const sorted=[...list];
+  if(mode==='id') sorted.sort((a,b)=>{
+    const [pa,na]=cardIdSortKey(a.cardId), [pb,nb]=cardIdSortKey(b.cardId);
+    return pa.localeCompare(pb)||na-nb;
+  });
+  else if(mode==='added') sorted.sort((a,b)=>(a.updatedAt||0)-(b.updatedAt||0));
+  else sorted.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  return sorted;
+}
+const CULTURE_SORTABLE_SECTIONS=new Set(['structure','outpost']);
+
 function renderCulture(){
   document.getElementById('culture-tribe').value=culture.tribeName||'';
   // [section, title, entries, row formatter, optional custom list renderer]
   const idChip=e=>e.cardId?`<span class="recipe-code" style="font-size:.75rem">${esc(e.cardId)}</span> `:'';
+  const LARGE_BLOCK_THRESHOLD=8;
+  const WIDE_BLOCK_THRESHOLD=15;
   const blocks=[
-    ['structure','Structures',live(culture.structures),e=>`${idChip(e)}<strong>${esc(e.name)}</strong>${e.notes?` — ${esc(e.notes)}`:''}`],
-    ['outpost','Outposts',live(culture.outposts),e=>{
+    ['outpost','Outposts',sortCultureList('outpost',live(culture.outposts)),e=>{
       const names=outpostStructureNames(e);
       return `${idChip(e)}<strong>${esc(e.name)}</strong>${names.length?` — ${esc(names.join(', '))}`:' — <em>no structures yet</em>'}${e.notes?`<div class="culture-row-notes">${esc(e.notes)}</div>`:''}`;
     }],
@@ -2911,16 +3084,17 @@ function renderCulture(){
     ['knowledge','Knowledge Cards',live(culture.knowledgeCards),e=>`${e.cardId?`<span class="recipe-code" style="font-size:.75rem">${esc(e.cardId)}</span> `:''}<strong>${esc(e.name)}</strong>`],
     ['taboo','Taboos',live(culture.taboos),e=>esc(e.text)],
     ['pigment','Pigments',live(culture.pigments),e=>esc(e.name)],
+    ['structure','Structures',sortCultureList('structure',live(culture.structures)),e=>`${idChip(e)}<strong>${esc(e.name)}</strong>${e.notes?` — ${esc(e.notes)}`:''}`],
   ];
   const deletedBlock=recentlyDeletedHtml([
-    ['structure',culture.structures],['outpost',culture.outposts],['mantle',culture.mantlePowers],
-    ['knowledge',culture.knowledgeCards],['taboo',culture.taboos],['pigment',culture.pigments],
+    ['outpost',culture.outposts],['mantle',culture.mantlePowers],['knowledge',culture.knowledgeCards],
+    ['taboo',culture.taboos],['pigment',culture.pigments],['structure',culture.structures],
   ].flatMap(([sec,list])=>deletedJournalItems(sec,list)));
   document.getElementById('culture-lists').innerHTML=blocks.map(([sec,title,list,fmt,listHtml])=>`
-    <div class="culture-block">
-      <h3>${title}<button class="btn btn-sm" onclick="openJournalEntry('${sec}')">+ Add</button></h3>
-      ${list.length?(listHtml?listHtml(list,fmt):list.map(e=>cultureRowHtml(sec,e,fmt)).join(''))
-      :'<p class="journal-empty">None yet.</p>'}
+    <div class="culture-block${list.length>=LARGE_BLOCK_THRESHOLD?' culture-block--lg':''}${list.length>=WIDE_BLOCK_THRESHOLD?' culture-block--wide':''}">
+      <h3>${title}<span class="culture-h3-actions">${CULTURE_SORTABLE_SECTIONS.has(sec)?`<button class="btn btn-sm" onclick="toggleCultureSort('${sec}')" title="Cycle sort: A–Z → oldest first → by ID">${CULTURE_SORT_LABELS[getCultureSort(sec)]}</button>`:''}<button class="btn btn-sm" onclick="openJournalEntry('${sec}')">+ Add</button></span></h3>
+      <div class="culture-block-rows">${list.length?(listHtml?listHtml(list,fmt):list.map(e=>cultureRowHtml(sec,e,fmt)).join(''))
+      :'<p class="journal-empty">None yet.</p>'}</div>
     </div>`).join('')+deletedBlock;
 }
 
@@ -3081,18 +3255,28 @@ function renderInvestigations(){
 // Sorted by entry number so "have we read 117?" is a quick scan.
 function renderCodexEntries(){
   const el=document.getElementById('codex-list');
+  const refCount=Object.keys(codexRef).length;
+  const statusEl=document.getElementById('codex-ref-status');
+  if(statusEl) statusEl.textContent=refCount
+    ?`Codex text loaded for ${refCount} entries (this device only)`
+    :'';
   const list=live(codexEntries).sort((a,b)=>{
     const na=parseInt(a.entry,10), nb=parseInt(b.entry,10);
     if(Number.isFinite(na)&&Number.isFinite(nb)&&na!==nb) return na-nb;
     return String(a.entry||'').localeCompare(String(b.entry||''));
   });
-  el.innerHTML=(list.length?list.map(e=>`
+  el.innerHTML=(list.length?list.map(e=>{
+    const ref=codexRefFor(e.entry);
+    // saved title wins; blank titles fall back to the locally derived snippet
+    const title=e.title||(ref?codexSnippet(ref.x):'');
+    return `
     <div class="journal-card">
-      <div class="journal-card-title">Entry ${esc(e.entry)}${e.title?` — ${esc(e.title)}`:''}</div>
+      <div class="journal-card-title">Entry ${esc(e.entry)}${title?` — ${esc(title)}`:''}</div>
       ${(e.sourceCategory||e.sourceId)?`<div class="journal-card-sub">Source: ${esc([e.sourceCategory,e.sourceId].filter(Boolean).join(' · '))}</div>`:''}
       ${e.notes?`<div class="journal-card-body">${esc(e.notes)}</div>`:''}
+      ${ref?`<details class="codex-read"><summary>Read entry${ref.p?` (p.${esc(String(ref.p))})`:''}</summary><div class="codex-read-text">${esc(ref.x)}</div></details>`:''}
       ${journalCardActions('codex',e.id)}
-    </div>`).join('')
+    </div>`;}).join('')
   :'<p class="journal-empty">No codex entries recorded yet. When a card sends you to the codex, log it here.</p>')
   +recentlyDeletedHtml(deletedJournalItems('codex',codexEntries));
 }
@@ -3437,6 +3621,7 @@ document.addEventListener('keydown',e=>{
     }
   }catch(e){ /* fetch unavailable (file://); built-in list remains active */ }
   load();
+  loadCodexRef();
   renderJournal();
   renderTokenNotice();
   updateSyncBadge();
