@@ -233,11 +233,13 @@ main{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:2rem 1.5
 .behemoth-demeanor-actions{display:flex;gap:.35rem;flex-shrink:0;}
 .behemoth-demeanor-actions .btn{min-width:2rem;padding:.25rem .45rem;}
 .secret-list{margin:.1rem 0 .1rem 1.3rem;font-size:.85rem;color:var(--chalk);}
-.culture-lists{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));grid-auto-flow:dense;align-items:start;gap:1rem;margin-top:1rem;}
+/* Shared with .culture-block-rows below so the wide block's internal data
+   columns line up with the outer grid's card columns at the same widths. */
+.culture-lists{--culture-col-min:300px;--culture-col-gap:1rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--culture-col-min),1fr));grid-auto-flow:dense;align-items:start;gap:var(--culture-col-gap);margin-top:1rem;}
 .culture-block{background:var(--ash);border:1px solid var(--smoke);padding:1rem;box-shadow:0 1px 3px rgba(44,29,28,.06);}
 .culture-block--lg{grid-column:1/-1;}
-.culture-block--lg .culture-block-rows{columns:2 230px;column-gap:1.4rem;}
-.culture-block--wide .culture-block-rows{columns:3 230px;}
+.culture-block--lg .culture-block-rows{columns:2 var(--culture-col-min);column-gap:var(--culture-col-gap);}
+.culture-block--wide .culture-block-rows{columns:3 var(--culture-col-min);}
 .culture-block--lg .culture-block-rows>*{break-inside:avoid;}
 .culture-block h3{font-family:'Cinzel',serif;font-size:.9rem;color:var(--ochre);margin-bottom:.6rem;display:flex;justify-content:space-between;align-items:center;gap:.6rem;}
 .culture-h3-actions{display:inline-flex;gap:.5rem;align-items:center;}
