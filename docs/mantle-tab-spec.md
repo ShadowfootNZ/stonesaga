@@ -247,7 +247,8 @@ the thing the Workshop explorer can't do catalogue-wide.
 ### Explicit non-goals (both phases)
 
 - No possessions/crafted-items list or mantle-power selection **in these two
-  phases** — both are planned follow-ons (docs/TODO.md items #4 and #5), which
+  phases** — both are planned follow-ons (docs/TODO.md items #7 and #8, as
+  renumbered 2026-07-26), which
   is why the stored shape is `{counts: {...}}`: later phases add sibling keys
   (e.g. `items`, `powers`) without a breaking change. No special items ever,
   and no attributes beyond what's described (attribute steppers were
