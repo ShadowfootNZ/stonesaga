@@ -226,7 +226,7 @@ consumes a material and produces a result.
   field) should read the colour off the grind table rather than duplicating
   it as a manually-typed attribute.
 
-## 11. Orange pip must always resolve to the leftmost/colour position
+## 11. Orange pip must always resolve to the leftmost/colour position — DONE 2026-08-07
 
 Not about which material the Explorer treats as "A" — it's inside
 `computeCodes()` (`app.js:357-384`), which tries every orientation row of
@@ -255,6 +255,34 @@ axis is genuinely `null` in every row; fix at the data source. Only add a
 runtime filter to `computeCodes()` if a genuine case survives that audit
 where two legitimate rows disagree on which colour is left.
 
+Audit result (2026-08-07): the data is already correct — no built-in
+material in `materials.json` has an orange mark; the three orange materials
+are custom trophies in the synced save (Shimmering Moss O1/Y5, Ruinous
+Shard O1/B2, Sundered Stone O1/P6), each with the non-orange axis fully
+`null`. The phantom therefore does **not** come from bad data: it comes
+from the 180° flip row `marksToOrientations()` correctly generates from
+correct marks (`[R, L, 180]` puts orange on the inner edge), so the runtime
+filter is needed after all. Rule confirmed in play (Brian, 2026-08-07 — a
+revealed game rule, not a house rule): when orange is used in a recipe it
+must be the leftmost of the 4 elements, which prevents orange being used in
+the second material. Ruling tightened same day: orange may appear **only**
+at position 1 (the colour slot) — an orange pip at position 2, 3, or 4
+makes the pairing illegal, so self-pairing an orange material yields
+nothing at all. This supersedes the 2026-08-02 worked example's conclusion
+that `O1221` was legal (its B-right orange makes it illegal too). Fix: in
+`computeCodes()`, after the inner-edge checks, skip the pairing if any of
+A-right, B-left, or B-right is orange
+(`if (arc==='Orange'||blc==='Orange'||brc==='Orange') continue;`). An
+orange material can still lead legally as material A (orange leftmost)
+against any orange-free partner whose left edge matches A's inner colour.
+
+Implemented 2026-08-07 (`computeCodes()`, `app.js`). Verified via
+Playwright driving the real page (seeded all three trophies plus an
+orange-free Blue-left partner): both self-pairs and the Shard×Stone
+cross-pair return zero codes, Shard leading the partner still yields
+`O1223`, the partner leading Shard yields nothing (orange can't enter
+via B), and Bone×Bone still returns its 6 pre-fix codes.
+
 ## 12. Add the Moon omen as a processing-action option
 
 Moonblood needs the Moon omen to be processed, the same way Coral needs the
@@ -265,16 +293,36 @@ Comet omen (already modeled: `comet` is one of `PROCESSING_ACTIONS`,
 self-contained extension of #2's schema — unrelated to the grinding-results
 mechanic in #10 above, despite the name overlap with `grind`.
 
-## 13. Fix multi-column width mismatch: Knowledge Cards / Mantle Powers vs Structures
+## 13. Fix multi-column width mismatch: Knowledge Cards / Mantle Powers vs Structures — DONE 2026-08-07
 
-On iPad, Knowledge Cards and Mantle Powers each render 3 columns spanning
-the full row width, at the same time Structures also renders 3 columns at
-that same full width — i.e. two "wide" blocks side by side rather than one.
-Per #4/#5's design, investigate whether Knowledge Cards and Mantle Powers
-are both crossing `WIDE_BLOCK_THRESHOLD` (15 items, `renderCulture()`) at
-list sizes where Structures also is. Needs a visual check with realistic
-seeded counts for all three sections at once at the iPad breakpoint (prior
-Playwright verification for #4 only tested one large section at a time).
+Root cause (clarified 2026-08-07): not which blocks cross the thresholds —
+`.culture-block--lg` itself was `grid-column:1/-1` (full row) while its rows
+cap at `columns:2`, so on a 3-track grid an 8–14-item block spanned 3
+tracks' width holding only 2 data columns. `--wide` had the same latent bug
+one size up (would span a 4-track grid with only 3 columns). Rule adopted:
+**a large block spans exactly as many outer tracks as its internal column
+cap** — `--lg` gets `grid-column:span 2`, `--wide` `span 3` (`styles.css`),
+so the width always matches the content columns and `grid-auto-flow:dense`
+packs small blocks into the freed track(s) beside it. Because `span N` on a
+grid with fewer than N tracks would force implicit tracks and overflow,
+each span is gated by a container query on `.culture-lists` (now
+`container:culture-lists/inline-size`) at the same widths where `auto-fill`
+adds the matching track (616px / 932px — hardcoded, since container size
+queries can't read the shared `--culture-col-min`/`--culture-col-gap` vars;
+commented accordingly). Verification also surfaced a real boundary bug from
+#4's accepted padding imprecision: at 1024px (iPad landscape, 3 tracks) a
+span-2 block's 1rem padding + 1px border left its inside ~34px too narrow
+for two 300px columns, collapsing it to one fat column — fixed by lowering
+the multicol minimum to `calc(var(--culture-col-min) - 2rem - 2px)`; the
+declared column count still caps overfit. No `app.js` changes; thresholds,
+column-major reading order, and Structures-last ordering untouched.
+Verified via Playwright (real page, all three sections seeded large at
+once — the case #4 never tested; measuring rendered column offsets and
+width-in-tracks, not declared values) at 1600/1180/1024/810/768/700/616/
+500px in two scenarios: Structures 24 / Mantle Powers 16 / Knowledge Cards
+16 (all wide) and 24/10/12 (wide + two lg) — every large block spans
+exactly its fitted column count at every width, and screenshots confirm
+small blocks now sit beside the 2-track blocks on 3-track layouts.
 
 ## 14. Selectable base-game Mantle when adding a Mantle
 

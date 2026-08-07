@@ -367,6 +367,10 @@ function computeCodes(matA, matB) {
       if (arc === null || blc === null) continue; // null on inner edge: invalid
       if (arc !== blc) continue; // inner edges must share pip type
 
+      // Game rule (revealed in play, 2026-08-07): orange may only ever be the
+      // leftmost/colour pip — orange anywhere else makes the pairing illegal.
+      if (arc === 'Orange' || blc === 'Orange' || brc === 'Orange') continue;
+
       // B-right null: must be last column — that's fine, it IS the last column
       // Determine colour: pip type of leftmost column = A-left
       const color = alc; // could be null if A-left is null — but then invalid (null can't be leftmost)

@@ -235,11 +235,24 @@ main{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:2rem 1.5
 .secret-list{margin:.1rem 0 .1rem 1.3rem;font-size:.85rem;color:var(--chalk);}
 /* Shared with .culture-block-rows below so the wide block's internal data
    columns line up with the outer grid's card columns at the same widths. */
-.culture-lists{--culture-col-min:300px;--culture-col-gap:1rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--culture-col-min),1fr));grid-auto-flow:dense;align-items:start;gap:var(--culture-col-gap);margin-top:1rem;}
+.culture-lists{--culture-col-min:300px;--culture-col-gap:1rem;container:culture-lists/inline-size;display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--culture-col-min),1fr));grid-auto-flow:dense;align-items:start;gap:var(--culture-col-gap);margin-top:1rem;}
 .culture-block{background:var(--ash);border:1px solid var(--smoke);padding:1rem;box-shadow:0 1px 3px rgba(44,29,28,.06);}
-.culture-block--lg{grid-column:1/-1;}
-.culture-block--lg .culture-block-rows{columns:2 var(--culture-col-min);column-gap:var(--culture-col-gap);}
-.culture-block--wide .culture-block-rows{columns:3 var(--culture-col-min);}
+/* The multicol minimum is the shared track minimum less the block's own
+   horizontal padding+border (1rem+1px per side): a span-N block is exactly N
+   tracks wide *outside*, so without this the inside is ~34px too narrow to fit
+   its N columns right at a track-count boundary (e.g. 1024px iPad landscape)
+   and drops to N-1 fat columns. The declared column count still caps overfit. */
+.culture-block--lg .culture-block-rows{columns:2 calc(var(--culture-col-min) - 2rem - 2px);column-gap:var(--culture-col-gap);}
+.culture-block--wide .culture-block-rows{columns:3 calc(var(--culture-col-min) - 2rem - 2px);}
+/* A large block spans exactly as many outer tracks as its internal column cap
+   (2 for --lg, 3 for --wide), so its width always matches its content columns
+   and small blocks can dense-pack beside it. The span must never exceed the
+   tracks that exist (span N on a narrower grid would force implicit tracks and
+   overflow), so each span is gated on the same widths at which auto-fill above
+   adds the matching track: N*300px + (N-1)*1rem, from --culture-col-min /
+   --culture-col-gap (container size queries can't read custom properties). */
+@container culture-lists (min-width:616px){.culture-block--lg{grid-column:span 2;}}
+@container culture-lists (min-width:932px){.culture-block--wide{grid-column:span 3;}}
 .culture-block--lg .culture-block-rows>*{break-inside:avoid;}
 .culture-block h3{font-family:'Cinzel',serif;font-size:.9rem;color:var(--ochre);margin-bottom:.6rem;display:flex;justify-content:space-between;align-items:center;gap:.6rem;}
 .culture-h3-actions{display:inline-flex;gap:.5rem;align-items:center;}
