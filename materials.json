@@ -1,5 +1,5 @@
 {
-  "_readme": "Stonesaga material reference data. 'base' links a processed material back to its raw form. 'marks' are the 4 edge pips [left, right, top, bottom] — null means no pip on that edge. Optional 'processing' on raw materials lists which action(s) turn it into its processed form, from the closed set cut/drill/grind/heat/strike/comet; multiple values are alternatives (any one works). Omitted/null = not yet confirmed from cards. Informational only — the app never gates the Process button on it. Images live in assets/images/materials/.",
+  "_readme": "Stonesaga material reference data. 'base' links a processed material back to its raw form. 'marks' are the 4 edge pips [left, right, top, bottom] — null means no pip on that edge. Optional 'processing' on raw materials lists which action(s) turn it into its processed form, from the closed set cut/drill/grind/heat/strike/comet/moon/scrape/energy; multiple values are alternatives (any one works). Omitted/null = not yet confirmed from cards. Informational only — the app never gates the Process button on it. Images live in assets/images/materials/.",
 
   "Bone": {
     "cat": "animal", "base": null, "processed": "Bone (carved)", "processing": ["drill", "cut"],
@@ -24,7 +24,7 @@
   },
 
   "Shell": {
-    "cat": "animal", "base": null, "processed": "Shell (sharpened)",
+    "cat": "animal", "base": null, "processed": "Shell (sharpened)", "processing": ["drill", "scrape"],
     "image": "assets/images/materials/shell.webp",
     "marks": null
   },
@@ -57,7 +57,7 @@
   },
 
   "Tooth": {
-    "cat": "animal", "base": null, "processed": "Tooth (drilled)",
+    "cat": "animal", "base": null, "processed": "Tooth (drilled)", "processing": ["drill"],
     "image": "assets/images/materials/tooth.webp",
     "marks": null
   },
@@ -68,7 +68,7 @@
   },
 
   "Clay": {
-    "cat": "mineral", "base": null, "processed": "Clay (fired)",
+    "cat": "mineral", "base": null, "processed": "Clay (fired)", "processing": ["heat"],
     "image": "assets/images/materials/clay.webp",
     "marks": null
   },
@@ -79,7 +79,7 @@
   },
 
   "Cloudstone": {
-    "cat": "mineral", "base": null, "processed": "Cloudstone (shaped)",
+    "cat": "mineral", "base": null, "processed": "Cloudstone (shaped)", "processing": ["grind"],
     "image": "assets/images/materials/cloudstone.webp",
     "marks": null
   },
@@ -90,7 +90,7 @@
   },
 
   "Riverstone": {
-    "cat": "mineral", "base": null, "processed": "Riverstone (flaked)",
+    "cat": "mineral", "base": null, "processed": "Riverstone (flaked)", "processing": ["strike"],
     "image": "assets/images/materials/riverstone.webp",
     "marks": null
   },
@@ -101,7 +101,7 @@
   },
 
   "Sunstone": {
-    "cat": "mineral", "base": null, "processed": "Sunstone (shaped)",
+    "cat": "mineral", "base": null, "processed": "Sunstone (shaped)", "processing": ["scrape"],
     "image": "assets/images/materials/sunstone.webp",
     "marks": null
   },
@@ -112,7 +112,7 @@
   },
 
   "Wood": {
-    "cat": "plant", "base": null, "processed": "Wood (hardened)",
+    "cat": "plant", "base": null, "processed": "Wood (hardened)", "processing": ["heat", "cut"],
     "image": "assets/images/materials/wood.webp",
     "marks": { "left": "Blue 2", "right": "Yellow 2", "top": "Red 2", "bottom": "Yellow 3" }
   },
@@ -123,7 +123,7 @@
   },
 
   "Fiber": {
-    "cat": "plant", "base": null, "processed": "Fiber (woven)",
+    "cat": "plant", "base": null, "processed": "Fiber (woven)", "processing": ["cut"],
     "image": "assets/images/materials/fiber.webp",
     "marks": null
   },
@@ -134,7 +134,7 @@
   },
 
   "Pitch": {
-    "cat": "plant", "base": null, "processed": "Pitch (treated)",
+    "cat": "plant", "base": null, "processed": "Pitch (treated)", "processing": ["heat"],
     "image": "assets/images/materials/pitch.webp",
     "marks": null
   },
@@ -145,7 +145,7 @@
   },
 
   "Moonblood": {
-    "cat": "rare", "base": null, "processed": "Moonblood (solid)",
+    "cat": "rare", "base": null, "processed": "Moonblood (solid)", "processing": ["moon"],
     "image": "assets/images/materials/moonblood.webp",
     "marks": null
   },
@@ -167,7 +167,7 @@
   },
 
   "Silk": {
-    "cat": "rare", "base": null, "processed": "Silk (woven)",
+    "cat": "rare", "base": null, "processed": "Silk (woven)", "processing": ["energy"],
     "image": "assets/images/materials/silk.webp",
     "marks": { "left": "Blue 1", "right": "Yellow 1", "top": "Red 3", "bottom": null }
   },

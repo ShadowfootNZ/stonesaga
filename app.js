@@ -87,37 +87,37 @@ const PIP_CSS     = {Blue:'blue',Red:'red',Yellow:'yellow',Purple:'purple',Grey:
 // used only when the file cannot be fetched (e.g. opening via file://).
 const IMG = 'assets/images/materials/';
 const KNOWN_MATERIALS_BUILTIN = [
-  {name:'Bone',               cat:'animal',  processed:'Bone (carved)',        image:IMG+'bone.webp',              marks:['Blue 2',  'Yellow 2', 'Yellow 3', 'Red 2'  ]},
+  {name:'Bone',               cat:'animal',  processed:'Bone (carved)',        image:IMG+'bone.webp',              marks:['Blue 2',  'Yellow 2', 'Yellow 3', 'Red 2'  ], processing:['drill','cut']},
   {name:'Bone (carved)',      cat:'animal',  processed:null,                   image:IMG+'bone-carved.webp',       marks:['Red 1',   'Yellow 3', 'Red 4',    'Yellow 4']},
-  {name:'Hide',               cat:'animal',  processed:'Hide (cured)',         image:IMG+'hide.webp',              marks:null},
+  {name:'Hide',               cat:'animal',  processed:'Hide (cured)',         image:IMG+'hide.webp',              marks:null, processing:['drill','cut']},
   {name:'Hide (cured)',       cat:'animal',  processed:null,                   image:IMG+'hide-cured.webp',        marks:['Blue 3',  'Red 5',    null,       null      ]},
-  {name:'Shell',              cat:'animal',  processed:'Shell (sharpened)',    image:IMG+'shell.webp',             marks:null},
+  {name:'Shell',              cat:'animal',  processed:'Shell (sharpened)',    image:IMG+'shell.webp',             marks:null, processing:['drill','scrape']},
   {name:'Shell (sharpened)',  cat:'animal',  processed:null,                   image:IMG+'shell-sharpened.webp',   marks:['Blue 6',  'Red 3',    'Yellow 5', 'Red 1'   ]},
-  {name:'Guts',               cat:'animal',  processed:'Guts (cured)',         image:IMG+'guts.webp',              marks:null},
+  {name:'Guts',               cat:'animal',  processed:'Guts (cured)',         image:IMG+'guts.webp',              marks:null, processing:['heat','cut']},
   {name:'Guts (cured)',       cat:'animal',  processed:null,                   image:IMG+'guts-cured.webp',        marks:['Yellow 1','Blue 1',   null,       'Red 3'   ]},
-  {name:'Feather',            cat:'animal',  processed:'Feather (cut)',        image:IMG+'feather.webp',           marks:[null,      'Blue 1',   null,       null      ]},
+  {name:'Feather',            cat:'animal',  processed:'Feather (cut)',        image:IMG+'feather.webp',           marks:[null,      'Blue 1',   null,       null      ], processing:['cut']},
   {name:'Feather (cut)',      cat:'animal',  processed:null,                   image:IMG+'feather-cut.webp',       marks:['Yellow 1',null,       null,       null      ]},
-  {name:'Tooth',              cat:'animal',  processed:'Tooth (drilled)',      image:IMG+'tooth.webp',             marks:null},
+  {name:'Tooth',              cat:'animal',  processed:'Tooth (drilled)',      image:IMG+'tooth.webp',             marks:null, processing:['drill']},
   {name:'Tooth (drilled)',    cat:'animal',  processed:null,                   image:IMG+'tooth-drilled.webp',     marks:['Blue 2',  null,       'Yellow 2', null      ]},
-  {name:'Clay',               cat:'mineral', processed:'Clay (fired)',         image:IMG+'clay.webp',              marks:null},
+  {name:'Clay',               cat:'mineral', processed:'Clay (fired)',         image:IMG+'clay.webp',              marks:null, processing:['heat']},
   {name:'Clay (fired)',       cat:'mineral', processed:null,                   image:IMG+'clay-fired.webp',        marks:['Red 6',   'Red 6',    null,       null      ]},
-  {name:'Cloudstone',         cat:'mineral', processed:'Cloudstone (shaped)',  image:IMG+'cloudstone.webp',        marks:null},
+  {name:'Cloudstone',         cat:'mineral', processed:'Cloudstone (shaped)',  image:IMG+'cloudstone.webp',        marks:null, processing:['grind']},
   {name:'Cloudstone (shaped)',cat:'mineral', processed:null,                   image:IMG+'cloudstone-shaped.webp', marks:['Blue 5',  'Yellow 4', 'Red 4',    'Blue 2'  ]},
-  {name:'Riverstone',         cat:'mineral', processed:'Riverstone (flaked)',  image:IMG+'riverstone.webp',        marks:null},
+  {name:'Riverstone',         cat:'mineral', processed:'Riverstone (flaked)',  image:IMG+'riverstone.webp',        marks:null, processing:['strike']},
   {name:'Riverstone (flaked)',cat:'mineral', processed:null,                   image:IMG+'riverstone-flaked.webp', marks:['Red 1',   'Yellow 4', 'Yellow 4', 'Red 3'   ]},
-  {name:'Sunstone',           cat:'mineral', processed:'Sunstone (shaped)',    image:IMG+'sunstone.webp',          marks:null},
+  {name:'Sunstone',           cat:'mineral', processed:'Sunstone (shaped)',    image:IMG+'sunstone.webp',          marks:null, processing:['scrape']},
   {name:'Sunstone (shaped)',  cat:'mineral', processed:null,                   image:IMG+'sunstone-shaped.webp',   marks:['Red 5',   'Yellow 6', null,       null      ]},
-  {name:'Wood',               cat:'plant',   processed:'Wood (hardened)',      image:IMG+'wood.webp',              marks:['Blue 2',  'Yellow 2', 'Red 2',    'Yellow 3']},
+  {name:'Wood',               cat:'plant',   processed:'Wood (hardened)',      image:IMG+'wood.webp',              marks:['Blue 2',  'Yellow 2', 'Red 2',    'Yellow 3'], processing:['heat','cut']},
   {name:'Wood (hardened)',    cat:'plant',   processed:null,                   image:IMG+'wood-hardened.webp',     marks:['Red 1',   'Yellow 2', 'Red 3',    'Yellow 3']},
-  {name:'Fiber',              cat:'plant',   processed:'Fiber (woven)',        image:IMG+'fiber.webp',             marks:null},
+  {name:'Fiber',              cat:'plant',   processed:'Fiber (woven)',        image:IMG+'fiber.webp',             marks:null, processing:['cut']},
   {name:'Fiber (woven)',      cat:'plant',   processed:null,                   image:IMG+'fiber-woven.webp',       marks:['Yellow 1','Blue 1',   'Yellow 5', 'Red 5'   ]},
-  {name:'Pitch',              cat:'plant',   processed:'Pitch (treated)',      image:IMG+'pitch.webp',             marks:null},
+  {name:'Pitch',              cat:'plant',   processed:'Pitch (treated)',      image:IMG+'pitch.webp',             marks:null, processing:['heat']},
   {name:'Pitch (treated)',    cat:'plant',   processed:null,                   image:IMG+'pitch-treated.webp',     marks:['Red 5',   null,       null,       null      ]},
-  {name:'Moonblood',          cat:'rare',    processed:'Moonblood (solid)',    image:IMG+'moonblood.webp',         marks:null},
+  {name:'Moonblood',          cat:'rare',    processed:'Moonblood (solid)',    image:IMG+'moonblood.webp',         marks:null, processing:['moon']},
   {name:'Moonblood (solid)',  cat:'rare',    processed:null,                   image:IMG+'moonblood-solid.webp',   marks:['Red 1',   'Yellow 6', 'Red 2',    'Grey 6'  ]},
-  {name:'Coral',              cat:'rare',    processed:'Coral (living)',       image:IMG+'coral.webp',             marks:null},
+  {name:'Coral',              cat:'rare',    processed:'Coral (living)',       image:IMG+'coral.webp',             marks:null, processing:['comet']},
   {name:'Coral (living)',     cat:'rare',    processed:null,                   image:IMG+'coral-living.webp',      marks:['Purple 6','Red 4',    'Purple 6', 'Yellow 4']},
-  {name:'Silk',               cat:'rare',    processed:'Silk (woven)',         image:IMG+'silk.webp',              marks:['Blue 1',  'Yellow 1', 'Red 3',    null      ]},
+  {name:'Silk',               cat:'rare',    processed:'Silk (woven)',         image:IMG+'silk.webp',              marks:['Blue 1',  'Yellow 1', 'Red 3',    null      ], processing:['energy']},
   {name:'Silk (woven)',       cat:'rare',    processed:null,                   image:IMG+'silk-woven.webp',        marks:['Blue 2',  'Red 5',    null,       null      ]},
 ];
 let BASE_MATERIALS  = KNOWN_MATERIALS_BUILTIN;
@@ -129,7 +129,7 @@ let KM = Object.fromEntries(KNOWN_MATERIALS.map(m=>[m.name.toLowerCase(),m]));
 // required combination). Informational only: the app can't know which
 // structures/items make an action available, so the Process button never gates
 // on this.
-const PROCESSING_ACTIONS = ['cut','drill','grind','heat','strike','comet'];
+const PROCESSING_ACTIONS = ['cut','drill','grind','heat','strike','comet','moon','scrape','energy'];
 
 function parseMaterialsJson(data){
   return Object.entries(data)
@@ -159,6 +159,9 @@ const PROCESSING_ICONS = {
   heat:   '<path fill-rule="evenodd" d="M13.5 1.5 C11 4.5 8.5 6.5 7 9.5 C5.9 11.8 5.5 13.3 5.5 15 a6.5 6.5 0 0 0 13 0 c0-2.4-.9-4.4-2.1-6.7 C15 5.8 13.8 4 13.5 1.5 Z M12 9.5 c1.5 2.3 3 3.7 3 5.8 a3 3 0 0 1-6 0 c0-2.1 1.5-3.5 3-5.8 Z"/>',
   strike: '<path d="M4 8.5 q-.3-4 4.5-4.5 q4.3-.4 4.5 3.5 q.2 3.2-3.8 4.2 q-4.9 .8-5.2-3.2 Z M12 16.5 q-.2-3.2 3.8-3.5 q4-.3 4.2 3 q.2 3.7-3.6 4.2 q-4.2 .5-4.4-3.7 Z"/><path d="M14.5 5.5 l2.5-2 M16 9 l3.5-1 M10.5 12 l2 2.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
   comet:  '<circle cx="7.5" cy="16.5" r="4.5"/><path d="M11 12.5 L21.5 2.5 M13.5 15 L22.5 8 M8.5 11 L15.5 3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>',
+  moon:   '<path d="M15.5 2.5 C10.5 3 7 7 7 12 C7 17 10.5 21 15.5 21.5 C12.5 22.5 9 22 6.5 19.5 C2.5 15.5 2.5 8.5 6.5 4.5 C9 2 12.5 1.5 15.5 2.5 Z"/>',
+  scrape: '<path d="M4 15.5 L9 9.5 L13.5 13 L8.5 19.5 Z"/><path d="M12.5 9.5 L18.5 3 M15.5 12.5 L20.5 7.5 M17.5 15.5 L22 11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>',
+  energy: '<path d="M13.5 2 L5.5 13.5 h5 l-1.5 8.5 L18.5 10 h-5 Z"/>',
 };
 
 // Icon + word per action, joined by "or": the icons alone are new to players.
@@ -2605,13 +2608,10 @@ function _loadDriveImport(d) {
 // point at the backing list, render redraws the tab. Entries are {id, ...fields,
 // updatedAt} so the Phase-0 merge logic (union by id, newer wins) applies as-is.
 
-// Base-game mantles; expansions add more, so mantle entry is a datalist (free
-// text with suggestions) rather than a closed select.
-const MANTLES = ['Protector','Seeker','Storyteller','Wanderer'];
-// "mantle of the seeker" / "Seeker" → "Seeker"
-function mantleName(v){
-  return titleCase(v.replace(/^mantle of( the)?\s+/i,'').trim());
-}
+// All known mantles, base game + expansions (see docs/TODO.md #15 — expansion
+// ownership isn't tracked yet, so every mantle below is offered regardless of
+// which expansions a tribe actually owns). Closed set, alphabetical.
+const MANTLES = ['Mystic','Protector','Seeker','Storyteller','Wanderer'];
 function knownMantles(){
   return [...new Set([...MANTLES, ...live(culture.mantlePowers).map(e=>e.mantle).filter(Boolean)])].sort();
 }
@@ -2630,7 +2630,7 @@ const JOURNAL_SECTIONS = {
   ]},
   mantle: {label:'Mantle Power', get:()=>culture.mantlePowers, set:v=>culture.mantlePowers=v, render:()=>renderCulture(), fields:[
     {key:'cardId', label:'Card ID', placeholder:'e.g. MA01', normalize:v=>normalizeCardId(v,'MA')},
-    {key:'mantle', label:'Mantle', type:'datalist', options:()=>knownMantles(), placeholder:'e.g. Seeker', normalize:v=>mantleName(v)},
+    {key:'mantle', label:'Mantle', type:'select', defaultValue:'', options:()=>['',...knownMantles().map(m=>({value:m,label:`Mantle of the ${m}`}))]},
     {key:'name', label:'Name', required:true},
     {key:'description', label:'Description', type:'textarea'},
   ]},
@@ -2703,8 +2703,13 @@ function jeFieldHtml(f, val){
   const label=`<label>${esc(f.label)}${f.required?' *':''}</label>`;
   if(f.type==='textarea'||f.type==='lines')
     return `<div class="form-group">${label}<textarea class="form-control" id="${id}" rows="${f.rows||3}" placeholder="${esc(f.placeholder||'')}">${esc(val)}</textarea></div>`;
-  if(f.type==='select')
-    return `<div class="form-group">${label}<select class="form-control" id="${id}">${f.options.map(o=>`<option value="${esc(o)}"${o===val?' selected':''}>${esc(o)||'—'}</option>`).join('')}</select></div>`;
+  if(f.type==='select'){
+    // options may be plain strings, or {value,label} when the stored value
+    // (used for grouping/matching) needs to differ from what's displayed.
+    const opts=(typeof f.options==='function'?f.options():f.options)
+      .map(o=>typeof o==='object'?o:{value:o,label:o});
+    return `<div class="form-group">${label}<select class="form-control" id="${id}">${opts.map(o=>`<option value="${esc(o.value)}"${o.value===val?' selected':''}>${esc(o.label)||'—'}</option>`).join('')}</select></div>`;
+  }
   if(f.type==='checks'){ // multi-pick from a dynamic option list; val is an array of option values
     const opts=typeof f.options==='function'?f.options():f.options;
     if(!opts.length)
@@ -2712,7 +2717,7 @@ function jeFieldHtml(f, val){
     return `<div class="form-group">${label}<div class="je-checks" id="${id}">${opts.map(o=>
       `<label class="je-check"><input type="checkbox" value="${esc(o.value)}"${(val||[]).includes(o.value)?' checked':''}> ${esc(o.label)}</label>`).join('')}</div></div>`;
   }
-  if(f.type==='datalist'){ // free text with suggestions — for open-ended sets like mantles
+  if(f.type==='datalist'){ // free text with suggestions — for open-ended sets
     const opts=typeof f.options==='function'?f.options():f.options;
     return `<div class="form-group">${label}<input class="form-control" id="${id}" list="${id}-list" placeholder="${esc(f.placeholder||'')}" value="${esc(val)}"><datalist id="${id}-list">${opts.map(o=>`<option value="${esc(o)}">`).join('')}</datalist></div>`;
   }
